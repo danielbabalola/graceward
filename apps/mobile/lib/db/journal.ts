@@ -94,6 +94,36 @@ export async function listJournalEntries(): Promise<JournalEntry[]> {
   return rows.map(mapRow);
 }
 
+export async function listJournalEntriesByDate(
+  entryDate: string,
+): Promise<JournalEntry[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<JournalEntryRow>(
+    `SELECT * FROM journal_entries
+      WHERE entry_date = ? AND deleted_at IS NULL
+      ORDER BY created_at DESC`,
+    [entryDate],
+  );
+  return rows.map(mapRow);
+}
+
+export async function listJournalEntryDatesForMonth(
+  year: number,
+  monthIndex: number,
+): Promise<string[]> {
+  const db = await getDatabase();
+  const startInclusive = toLocalDateString(new Date(year, monthIndex, 1));
+  const endExclusive = toLocalDateString(new Date(year, monthIndex + 1, 1));
+  const rows = await db.getAllAsync<{ entry_date: string }>(
+    `SELECT DISTINCT entry_date FROM journal_entries
+      WHERE deleted_at IS NULL
+        AND entry_date >= ?
+        AND entry_date < ?`,
+    [startInclusive, endExclusive],
+  );
+  return rows.map((row) => row.entry_date);
+}
+
 export async function getJournalEntryById(
   id: string,
 ): Promise<JournalEntry | null> {

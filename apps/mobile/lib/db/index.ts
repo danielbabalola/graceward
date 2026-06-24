@@ -3,6 +3,8 @@ export { runMigrations } from "./migrations";
 export {
   createJournalEntry,
   listJournalEntries,
+  listJournalEntriesByDate,
+  listJournalEntryDatesForMonth,
   getJournalEntryById,
   updateJournalEntry,
   softDeleteJournalEntry,
