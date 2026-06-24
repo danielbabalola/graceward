@@ -223,6 +223,14 @@ export default function SettingsScreen() {
           description="AI reflections run only when you choose them. Automatic analysis is not enabled."
         />
         <SettingsRow
+          title="What is sent for AI"
+          description="When you choose an AI reflection, the text of that reflection is sent to Graceward's AI service. Nothing else leaves your device."
+        />
+        <SettingsRow
+          title="Voice transcription"
+          description="Voice transcription isn't available yet, so AI reflection works with typed reflections for now."
+        />
+        <SettingsRow
           title="Privacy notice"
           description={
             consentState === "acknowledged"

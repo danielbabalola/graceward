@@ -41,6 +41,9 @@ export default function AiReflectionScreen() {
 
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [result, setResult] = useState<AnalyzeReflectionResponse | null>(null);
+  // Id of the cached AI result row currently shown; saved suggestions link to
+  // it so their saved state persists across reopens.
+  const [resultId, setResultId] = useState<string | null>(null);
   // ISO timestamp of the currently displayed result, used to detect whether the
   // entry was edited after this result was created.
   const [resultCreatedAt, setResultCreatedAt] = useState<string | null>(null);
@@ -78,6 +81,7 @@ export default function AiReflectionScreen() {
           if (active) {
             if (cached && !result) {
               setResult(cached.result);
+              setResultId(cached.id);
               setResultCreatedAt(cached.createdAt);
             }
             setLoadState("ready");
@@ -173,6 +177,7 @@ export default function AiReflectionScreen() {
         result: analysis,
       });
       setResult(analysis);
+      setResultId(saved.id);
       setResultCreatedAt(saved.createdAt);
       setAnalysisState("idle");
     } catch (error: unknown) {
@@ -255,7 +260,7 @@ export default function AiReflectionScreen() {
     );
   }
 
-  if (result) {
+  if (result && resultId) {
     // Only offer re-running when the entry was edited after this result. A
     // current result is view-only — nothing is re-sent automatically.
     const resultIsStale =
@@ -268,7 +273,11 @@ export default function AiReflectionScreen() {
             This reflection was created before your latest edit.
           </Text>
         ) : null}
-        <AiReflectionResultView journalEntryId={entry.id} result={result} />
+        <AiReflectionResultView
+          journalEntryId={entry.id}
+          aiReflectionResultId={resultId}
+          result={result}
+        />
         {resultIsStale ? (
           <Button
             label="Reflect again"
@@ -290,7 +299,7 @@ export default function AiReflectionScreen() {
         variant="primary"
         eyebrow="A reflection to consider"
         title="Let Graceward reflect with you"
-        description="Graceward will gently read this reflection and offer a short pastoral reflection plus optional prayers, gratitudes, faithfulness moments, and questions. You choose what, if anything, to save."
+        description="Graceward will gently read this reflection and offer a short reflection to consider, plus optional prayers, gratitudes, faithfulness moments, and questions. You choose what, if anything, to save."
       />
       <Text style={styles.privacyNote}>{PRIVACY_BODY}</Text>
       <Button

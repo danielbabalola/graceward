@@ -12,6 +12,10 @@ import { listJournalEntries } from "./journal";
 import { listPrayerRequests } from "./prayer";
 import { listGratitudes } from "./gratitude";
 import { listWins } from "./wins";
+import {
+  listSavedSuggestionsForExport,
+  type SavedSuggestionExport,
+} from "./ai-saved-suggestions";
 
 /**
  * A self-contained snapshot of all non-deleted local data. Faithfulness moments
@@ -28,12 +32,15 @@ export type LocalDataExport = {
     gratitudes: number;
     faithfulnessMoments: number;
     audioAssets: number;
+    savedAiSuggestions: number;
   };
   journalEntries: JournalEntry[];
   prayerRequests: PrayerRequest[];
   gratitudes: Gratitude[];
   faithfulnessMoments: Win[];
   audioAssets: AudioAsset[];
+  // Metadata only (kind + references + timestamps). No raw suggestion text.
+  savedAiSuggestions: SavedSuggestionExport[];
 };
 
 /**
@@ -52,12 +59,14 @@ export async function listAllForExport(): Promise<LocalDataExport> {
     gratitudes,
     faithfulnessMoments,
     audioAssets,
+    savedAiSuggestions,
   ] = await Promise.all([
     listJournalEntries(),
     listPrayerRequests(),
     listGratitudes(),
     listWins(),
     listAudioAssetsForExport(),
+    listSavedSuggestionsForExport(),
   ]);
 
   return {
@@ -70,12 +79,14 @@ export async function listAllForExport(): Promise<LocalDataExport> {
       gratitudes: gratitudes.length,
       faithfulnessMoments: faithfulnessMoments.length,
       audioAssets: audioAssets.length,
+      savedAiSuggestions: savedAiSuggestions.length,
     },
     journalEntries,
     prayerRequests,
     gratitudes,
     faithfulnessMoments,
     audioAssets,
+    savedAiSuggestions,
   };
 }
 
@@ -99,6 +110,7 @@ export async function deleteAllLocalData(): Promise<void> {
        DELETE FROM gratitudes;
        DELETE FROM wins;
        DELETE FROM ai_reflection_results;
+       DELETE FROM ai_saved_suggestions;
        DELETE FROM app_preferences;`,
     );
   });

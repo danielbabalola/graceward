@@ -178,6 +178,36 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 8,
+    up: async (db) => {
+      // Local-only record of which AI suggestions the user has already saved, so
+      // a saved prayer/gratitude/faithfulness card stays "saved" after leaving
+      // and reopening the AI result screen. Stores no raw suggestion text — only
+      // a content fingerprint plus references to the created local item. Never
+      // synced. A unique index prevents duplicate saves of the same suggestion.
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS ai_saved_suggestions (
+          id TEXT PRIMARY KEY NOT NULL,
+          ai_reflection_result_id TEXT NOT NULL,
+          journal_entry_id TEXT NOT NULL,
+          suggestion_kind TEXT NOT NULL,
+          suggestion_fingerprint TEXT NOT NULL,
+          suggestion_index INTEGER,
+          created_item_id TEXT,
+          created_item_type TEXT,
+          created_at TEXT NOT NULL,
+          deleted_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_ai_saved_suggestions_result_id
+          ON ai_saved_suggestions (ai_reflection_result_id);
+        CREATE INDEX IF NOT EXISTS idx_ai_saved_suggestions_journal_entry_id
+          ON ai_saved_suggestions (journal_entry_id);
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_ai_saved_suggestions_result_fingerprint
+          ON ai_saved_suggestions (ai_reflection_result_id, suggestion_fingerprint);
+      `);
+    },
+  },
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {

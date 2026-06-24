@@ -28,6 +28,20 @@ export type {
   CreateAiReflectionResultInput,
 } from "./ai-results";
 export {
+  markAiSuggestionSaved,
+  listSavedSuggestionFingerprints,
+  listSavedSuggestionsForExport,
+  prayerSuggestionFingerprint,
+  gratitudeSuggestionFingerprint,
+  faithfulnessSuggestionFingerprint,
+} from "./ai-saved-suggestions";
+export type {
+  SuggestionKind,
+  CreatedItemType,
+  MarkAiSuggestionSavedInput,
+  SavedSuggestionExport,
+} from "./ai-saved-suggestions";
+export {
   createPrayerRequest,
   listPrayerRequests,
   listPrayerRequestsByStatus,

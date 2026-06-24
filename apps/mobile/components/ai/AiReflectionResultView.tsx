@@ -1,14 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { AnalyzeReflectionResponse } from "@graceward/ai-schemas";
 import { Section } from "@/components/ui/Section";
 import { SuggestionCard, type SaveStatus } from "@/components/ai/SuggestionCard";
-import { createGratitude, createPrayerRequest, createWin } from "@/lib/db";
+import {
+  createGratitude,
+  createPrayerRequest,
+  createWin,
+  faithfulnessSuggestionFingerprint,
+  gratitudeSuggestionFingerprint,
+  listSavedSuggestionFingerprints,
+  markAiSuggestionSaved,
+  prayerSuggestionFingerprint,
+  type CreatedItemType,
+  type SuggestionKind,
+} from "@/lib/db";
 import { colors, radii, shadows, spacing, typography } from "@/theme/tokens";
 
 type AiReflectionResultViewProps = {
   journalEntryId: string;
+  /** The cached AI result row id; saved suggestions are linked to it. */
+  aiReflectionResultId: string;
   result: AnalyzeReflectionResponse;
+};
+
+type SaveMeta = {
+  kind: SuggestionKind;
+  index: number;
+  fingerprint: string;
+  createdItemType: CreatedItemType;
 };
 
 /** Splits the reflection into trimmed paragraphs for calm, readable spacing. */
@@ -26,17 +46,74 @@ function toParagraphs(text: string): string[] {
  */
 export function AiReflectionResultView({
   journalEntryId,
+  aiReflectionResultId,
   result,
 }: AiReflectionResultViewProps) {
   const [statuses, setStatuses] = useState<Record<string, SaveStatus>>({});
 
-  async function runSave(key: string, save: () => Promise<unknown>) {
+  // Restore saved state when reopening: mark any card whose suggestion was
+  // already saved (matched by content fingerprint) as "saved".
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const saved = new Set(
+          await listSavedSuggestionFingerprints(aiReflectionResultId),
+        );
+        if (!active || saved.size === 0) {
+          return;
+        }
+        const restored: Record<string, SaveStatus> = {};
+        result.prayerSuggestions.forEach((s, i) => {
+          if (saved.has(prayerSuggestionFingerprint(s))) {
+            restored[`prayer-${i}`] = "saved";
+          }
+        });
+        result.gratitudeSuggestions.forEach((s, i) => {
+          if (saved.has(gratitudeSuggestionFingerprint(s))) {
+            restored[`gratitude-${i}`] = "saved";
+          }
+        });
+        result.faithfulnessMomentSuggestions.forEach((s, i) => {
+          if (saved.has(faithfulnessSuggestionFingerprint(s))) {
+            restored[`moment-${i}`] = "saved";
+          }
+        });
+        setStatuses((prev) => ({ ...restored, ...prev }));
+      } catch (error: unknown) {
+        // A read failure shouldn't block saving again; only log a category.
+        console.warn(
+          "Failed to load saved AI suggestion state:",
+          error instanceof Error ? error.message : "unknown error",
+        );
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [aiReflectionResultId, result]);
+
+  async function runSave(
+    key: string,
+    meta: SaveMeta,
+    save: () => Promise<{ id: string }>,
+  ) {
     if (statuses[key] === "saving" || statuses[key] === "saved") {
       return;
     }
     setStatuses((prev) => ({ ...prev, [key]: "saving" }));
     try {
-      await save();
+      const created = await save();
+      // Persist the saved state so the card stays saved across reopens.
+      await markAiSuggestionSaved({
+        aiReflectionResultId,
+        journalEntryId,
+        suggestionKind: meta.kind,
+        suggestionFingerprint: meta.fingerprint,
+        suggestionIndex: meta.index,
+        createdItemId: created.id,
+        createdItemType: meta.createdItemType,
+      });
       setStatuses((prev) => ({ ...prev, [key]: "saved" }));
     } catch (error: unknown) {
       // Never log raw suggestion content — only an error category.
@@ -92,15 +169,23 @@ export function AiReflectionResultView({
                 saveLabel="Save prayer request"
                 savedLabel="Saved to Prayer"
                 onSave={(draft) =>
-                  void runSave(key, () =>
-                    createPrayerRequest({
-                      title: draft.title,
-                      description: draft.description || null,
-                      status: "active",
-                      sourceJournalEntryId: journalEntryId,
-                      followUpAt: draft.followUpAt,
-                      syncStatus: "local_only",
-                    }),
+                  void runSave(
+                    key,
+                    {
+                      kind: "prayer",
+                      index,
+                      fingerprint: prayerSuggestionFingerprint(prayer),
+                      createdItemType: "prayer_request",
+                    },
+                    () =>
+                      createPrayerRequest({
+                        title: draft.title,
+                        description: draft.description || null,
+                        status: "active",
+                        sourceJournalEntryId: journalEntryId,
+                        followUpAt: draft.followUpAt,
+                        syncStatus: "local_only",
+                      }),
                   )
                 }
               />
@@ -129,13 +214,21 @@ export function AiReflectionResultView({
                 saveLabel="Save gratitude"
                 savedLabel="Saved to Gratitude"
                 onSave={(draft) =>
-                  void runSave(key, () =>
-                    createGratitude({
-                      content: draft.title,
-                      category: draft.tag || null,
-                      journalEntryId,
-                      syncStatus: "local_only",
-                    }),
+                  void runSave(
+                    key,
+                    {
+                      kind: "gratitude",
+                      index,
+                      fingerprint: gratitudeSuggestionFingerprint(gratitude),
+                      createdItemType: "gratitude",
+                    },
+                    () =>
+                      createGratitude({
+                        content: draft.title,
+                        category: draft.tag || null,
+                        journalEntryId,
+                        syncStatus: "local_only",
+                      }),
                   )
                 }
               />
@@ -164,13 +257,21 @@ export function AiReflectionResultView({
                 saveLabel="Save faithfulness moment"
                 savedLabel="Saved to Faithfulness"
                 onSave={(draft) =>
-                  void runSave(key, () =>
-                    createWin({
-                      content: draft.title,
-                      faithfulnessTheme: draft.tag || null,
-                      journalEntryId,
-                      syncStatus: "local_only",
-                    }),
+                  void runSave(
+                    key,
+                    {
+                      kind: "faithfulness_moment",
+                      index,
+                      fingerprint: faithfulnessSuggestionFingerprint(moment),
+                      createdItemType: "win",
+                    },
+                    () =>
+                      createWin({
+                        content: draft.title,
+                        faithfulnessTheme: draft.tag || null,
+                        journalEntryId,
+                        syncStatus: "local_only",
+                      }),
                   )
                 }
               />
