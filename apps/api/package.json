@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fastify/multipart": "^10.0.0",
     "@graceward/ai-schemas": "workspace:*",
     "@graceward/shared": "workspace:*",
     "fastify": "^5.2.1",

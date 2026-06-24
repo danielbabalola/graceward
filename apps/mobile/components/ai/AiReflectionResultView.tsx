@@ -5,10 +5,12 @@ import { Section } from "@/components/ui/Section";
 import { SuggestionCard, type SaveStatus } from "@/components/ai/SuggestionCard";
 import {
   createGratitude,
+  createLesson,
   createPrayerRequest,
   createWin,
   faithfulnessSuggestionFingerprint,
   gratitudeSuggestionFingerprint,
+  lessonSuggestionFingerprint,
   listSavedSuggestionFingerprints,
   markAiSuggestionSaved,
   prayerSuggestionFingerprint,
@@ -77,6 +79,11 @@ export function AiReflectionResultView({
         result.faithfulnessMomentSuggestions.forEach((s, i) => {
           if (saved.has(faithfulnessSuggestionFingerprint(s))) {
             restored[`moment-${i}`] = "saved";
+          }
+        });
+        result.lessonSuggestions.forEach((s, i) => {
+          if (saved.has(lessonSuggestionFingerprint(s))) {
+            restored[`lesson-${i}`] = "saved";
           }
         });
         setStatuses((prev) => ({ ...restored, ...prev }));
@@ -270,6 +277,51 @@ export function AiReflectionResultView({
                         content: draft.title,
                         faithfulnessTheme: draft.tag || null,
                         journalEntryId,
+                        syncStatus: "local_only",
+                      }),
+                  )
+                }
+              />
+            );
+          })}
+        </Section>
+      ) : null}
+
+      {result.lessonSuggestions.length > 0 ? (
+        <Section title="Lessons to consider">
+          {result.lessonSuggestions.map((lesson, index) => {
+            const key = `lesson-${index}`;
+            return (
+              <SuggestionCard
+                key={key}
+                titleLabel="Lesson to consider"
+                descriptionLabel="What you may be noticing"
+                tagLabel="Theme"
+                initial={{
+                  title: lesson.title,
+                  description: lesson.content,
+                  tag: lesson.theme ?? "",
+                  followUpAt: null,
+                }}
+                status={statuses[key] ?? "idle"}
+                saveLabel="Save lesson"
+                savedLabel="Saved to Lessons"
+                onSave={(draft) =>
+                  void runSave(
+                    key,
+                    {
+                      kind: "lesson",
+                      index,
+                      fingerprint: lessonSuggestionFingerprint(lesson),
+                      createdItemType: "lesson",
+                    },
+                    () =>
+                      createLesson({
+                        title: draft.title,
+                        content: draft.description || draft.title,
+                        theme: draft.tag || null,
+                        sourceJournalEntryId: journalEntryId,
+                        status: "active",
                         syncStatus: "local_only",
                       }),
                   )

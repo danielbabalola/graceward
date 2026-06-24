@@ -6,7 +6,8 @@ import { getDatabase } from "./client";
  */
 type PreferenceKey =
   | "aiReflectionConsentAcknowledged"
-  | "voiceTranscriptionConsentAcknowledged";
+  | "voiceTranscriptionConsentAcknowledged"
+  | "voiceEntryConsentAcknowledged";
 
 type PreferenceRow = {
   value: string;
@@ -78,4 +79,26 @@ export async function acknowledgeVoiceTranscriptionConsent(): Promise<void> {
 /** Clears the acknowledgement so the transcription notice shows again. */
 export async function resetVoiceTranscriptionConsent(): Promise<void> {
   await clearPreference(VOICE_TRANSCRIPTION_CONSENT_KEY);
+}
+
+const VOICE_ENTRY_CONSENT_KEY: PreferenceKey = "voiceEntryConsentAcknowledged";
+
+/**
+ * True once the user has acknowledged the voice-entry privacy notice (speaking
+ * a prayer/gratitude/faithfulness/lesson to create it). Tracked separately from
+ * the journal transcription consent because this upload both transcribes and
+ * organizes the recording into a structured entry.
+ */
+export async function hasAcknowledgedVoiceEntryConsent(): Promise<boolean> {
+  return (await getPreference(VOICE_ENTRY_CONSENT_KEY)) === "true";
+}
+
+/** Records that the user acknowledged the voice-entry privacy notice. */
+export async function acknowledgeVoiceEntryConsent(): Promise<void> {
+  await setPreference(VOICE_ENTRY_CONSENT_KEY, "true");
+}
+
+/** Clears the acknowledgement so the voice-entry notice shows again. */
+export async function resetVoiceEntryConsent(): Promise<void> {
+  await clearPreference(VOICE_ENTRY_CONSENT_KEY);
 }

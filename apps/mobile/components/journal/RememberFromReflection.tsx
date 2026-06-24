@@ -55,6 +55,17 @@ export function RememberFromReflection({
         }
         style={styles.action}
       />
+      <Button
+        label="Save lesson"
+        variant="secondary"
+        onPress={() =>
+          router.push({
+            pathname: "/lesson/new",
+            params: { sourceJournalEntryId: journalEntryId },
+          })
+        }
+        style={styles.action}
+      />
     </View>
   );
 }

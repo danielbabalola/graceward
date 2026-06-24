@@ -45,6 +45,19 @@ cutting a build.
 - [ ] AI error states: with no/invalid `OPENAI_API_KEY` the app shows the calm
       "not configured" message; rapid requests surface the rate-limited message.
 
+## Closed beta: Help & Feedback (Settings)
+
+- [ ] Test the feedback flow: **Settings → Help & Feedback → Send feedback** and
+      **Report a bug** open a prefilled `mailto:` (or, with no mail app, copy the
+      message to the clipboard). Nothing sends automatically.
+- [ ] Verify no private content in diagnostics: **Copy diagnostic info** and the
+      bug-report body contain only app version/build, platform/OS, API
+      environment + host, and a timestamp — **never** journal/prayer/gratitude/
+      faithfulness/transcript/audio content, raw AI output, or any secret/API key.
+- [ ] Verify the support email/link is correct: replace the
+      `TODO_SUPPORT_EMAIL@example.com` placeholder in
+      `apps/mobile/lib/diagnostics.ts` (`SUPPORT_EMAIL`) with the real beta inbox.
+
 ## Privacy and store copy
 
 - [ ] Privacy readiness note reviewed (see `docs/11_SECURITY_AND_PRIVACY.md`)

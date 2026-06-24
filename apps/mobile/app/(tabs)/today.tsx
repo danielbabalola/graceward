@@ -4,6 +4,7 @@ import { router, useFocusEffect } from "expo-router";
 import type {
   Gratitude,
   JournalEntry,
+  Lesson,
   PrayerRequest,
   Win,
 } from "@graceward/shared";
@@ -16,6 +17,7 @@ import {
   getMostRecentAnsweredPrayer,
   getMostRecentGratitude,
   getMostRecentJournalEntry,
+  getMostRecentLesson,
   getMostRecentWin,
   getPrayerFocus,
 } from "@/lib/db";
@@ -29,6 +31,7 @@ import {
   gratitudeMetaLine,
   winMetaLine,
 } from "@/lib/gratitude-display";
+import { lessonMetaLine } from "@/lib/lesson-display";
 import { colors, spacing } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error";
@@ -39,6 +42,7 @@ type TodayData = {
   recentGratitude: Gratitude | null;
   answeredPrayer: PrayerRequest | null;
   recentWin: Win | null;
+  recentLesson: Lesson | null;
 };
 
 const EMPTY_DATA: TodayData = {
@@ -47,6 +51,7 @@ const EMPTY_DATA: TodayData = {
   recentGratitude: null,
   answeredPrayer: null,
   recentWin: null,
+  recentLesson: null,
 };
 
 type FaithfulnessReminder =
@@ -92,6 +97,7 @@ export default function TodayScreen() {
         getMostRecentGratitude(),
         getMostRecentAnsweredPrayer(),
         getMostRecentWin(),
+        getMostRecentLesson(),
       ])
         .then(
           ([
@@ -100,6 +106,7 @@ export default function TodayScreen() {
             recentGratitude,
             answeredPrayer,
             recentWin,
+            recentLesson,
           ]) => {
             if (active) {
               setData({
@@ -108,6 +115,7 @@ export default function TodayScreen() {
                 recentGratitude,
                 answeredPrayer,
                 recentWin,
+                recentLesson,
               });
               setLoadState("ready");
             }
@@ -250,6 +258,23 @@ export default function TodayScreen() {
               </View>
             )}
           </Section>
+
+          {data.recentLesson ? (
+            <Section title="What I'm Learning">
+              <ItemCard
+                meta={lessonMetaLine(data.recentLesson)}
+                content={data.recentLesson.title}
+                accentColor={colors.primaryDeep}
+                accessibilityLabel={`Open lesson: ${data.recentLesson.title}`}
+                onPress={() =>
+                  router.push({
+                    pathname: "/lesson/[id]",
+                    params: { id: data.recentLesson!.id },
+                  })
+                }
+              />
+            </Section>
+          ) : null}
         </>
       ) : null}
 

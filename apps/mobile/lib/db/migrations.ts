@@ -208,6 +208,38 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 9,
+    up: async (db) => {
+      // Lessons: things the user is learning, noticing, or discerning with God.
+      // Local-only user content, mirroring the gratitude/win tables plus a
+      // title and an active/archived status (like prayer requests).
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS lessons (
+          id TEXT PRIMARY KEY NOT NULL,
+          title TEXT NOT NULL,
+          content TEXT NOT NULL,
+          theme TEXT,
+          source_journal_entry_id TEXT,
+          status TEXT NOT NULL,
+          sync_status TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          deleted_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_lessons_status
+          ON lessons (status);
+        CREATE INDEX IF NOT EXISTS idx_lessons_source_journal_entry_id
+          ON lessons (source_journal_entry_id);
+        CREATE INDEX IF NOT EXISTS idx_lessons_created_at
+          ON lessons (created_at);
+        CREATE INDEX IF NOT EXISTS idx_lessons_sync_status
+          ON lessons (sync_status);
+        CREATE INDEX IF NOT EXISTS idx_lessons_deleted_at
+          ON lessons (deleted_at);
+      `);
+    },
+  },
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {

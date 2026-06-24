@@ -9,10 +9,12 @@ import {
   View,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import type { StructureVoiceEntryResponse } from "@graceward/ai-schemas";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
-import { createWin } from "@/lib/db";
+import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
+import { createWin, toLocalDateString } from "@/lib/db";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function NewWinScreen() {
@@ -24,6 +26,14 @@ export default function NewWinScreen() {
   const [saving, setSaving] = useState(false);
 
   const canSave = content.trim().length > 0 && !saving;
+
+  function handleStructured(result: StructureVoiceEntryResponse) {
+    if (result.entryType !== "faithfulness") {
+      return;
+    }
+    setContent(result.fields.content);
+    setTheme(result.fields.faithfulnessTheme ?? "");
+  }
 
   async function handleSave() {
     if (!canSave) {
@@ -37,7 +47,10 @@ export default function NewWinScreen() {
         journalEntryId: sourceJournalEntryId ?? null,
         syncStatus: "local_only",
       });
-      router.replace("/(tabs)/gratitude");
+      router.replace({
+        pathname: "/(tabs)/gratitude",
+        params: { segment: "faithfulness" },
+      });
     } catch (error: unknown) {
       // Never log raw faithfulness content — only an error category.
       console.warn(
@@ -66,6 +79,15 @@ export default function NewWinScreen() {
             pressable={false}
           />
         ) : null}
+
+        <VoiceEntryCapture
+          entryType="faithfulness"
+          entryDate={toLocalDateString(new Date())}
+          onStructured={handleStructured}
+          hasExistingInput={
+            content.trim().length > 0 || theme.trim().length > 0
+          }
+        />
 
         <View style={styles.field}>
           <Text style={styles.label}>Where did you see God's goodness?</Text>

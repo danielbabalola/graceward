@@ -36,6 +36,7 @@ export {
   prayerSuggestionFingerprint,
   gratitudeSuggestionFingerprint,
   faithfulnessSuggestionFingerprint,
+  lessonSuggestionFingerprint,
 } from "./ai-saved-suggestions";
 export type {
   SuggestionKind,
@@ -78,11 +79,26 @@ export {
   softDeleteWin,
 } from "./wins";
 export {
+  createLesson,
+  listLessons,
+  listRecentLessons,
+  listLessonsByStatus,
+  getMostRecentLesson,
+  getLessonById,
+  updateLesson,
+  archiveLesson,
+  reactivateLesson,
+  softDeleteLesson,
+} from "./lessons";
+export {
   hasAcknowledgedAiReflectionConsent,
   acknowledgeAiReflectionConsent,
   resetAiReflectionConsent,
   hasAcknowledgedVoiceTranscriptionConsent,
   acknowledgeVoiceTranscriptionConsent,
   resetVoiceTranscriptionConsent,
+  hasAcknowledgedVoiceEntryConsent,
+  acknowledgeVoiceEntryConsent,
+  resetVoiceEntryConsent,
 } from "./preferences";
 export { deriveTitle, isFutureLocalDate, toLocalDateString } from "./helpers";

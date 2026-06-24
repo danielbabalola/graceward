@@ -2,26 +2,11 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   analyzeReflectionRequestSchema,
   type AnalyzeReflectionResponse,
-  type ApiErrorBody,
 } from "@graceward/ai-schemas";
 import { createOpenAiProvider } from "../ai/openai-provider.js";
 import { AiError, type ReflectionAnalysisProvider } from "../ai/types.js";
 import { createRateLimiter, resolveRateLimitConfig } from "../rate-limit.js";
-
-function sendError(
-  reply: FastifyReply,
-  request: FastifyRequest,
-  status: number,
-  code: string,
-  message: string,
-): void {
-  // Every error response carries the request id so logs and clients can be
-  // correlated without exposing any reflection or provider content.
-  const body: ApiErrorBody = {
-    error: { code, message, requestId: request.id },
-  };
-  void reply.status(status).send(body);
-}
+import { sendError } from "./send-error.js";
 
 export function registerAnalyzeReflectionRoute(app: FastifyInstance): void {
   // One limiter per process. In-memory only (see rate-limit.ts): no Redis or

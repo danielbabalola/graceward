@@ -66,6 +66,18 @@ export type FaithfulnessMomentSuggestion = z.infer<
   typeof faithfulnessMomentSuggestionSchema
 >;
 
+/**
+ * A lesson the user may be noticing in their reflection — something they are
+ * learning or that God may be forming in them. Offered humbly for the user to
+ * consider and optionally save; never a claim that God definitively said it.
+ */
+export const lessonSuggestionSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+  theme: z.string().optional(),
+});
+export type LessonSuggestion = z.infer<typeof lessonSuggestionSchema>;
+
 export const analyzeReflectionResponseSchema = z.object({
   pastoralReflection: z.string().min(1),
   prayerSuggestions: z.array(prayerSuggestionSchema).default([]),
@@ -73,6 +85,7 @@ export const analyzeReflectionResponseSchema = z.object({
   faithfulnessMomentSuggestions: z
     .array(faithfulnessMomentSuggestionSchema)
     .default([]),
+  lessonSuggestions: z.array(lessonSuggestionSchema).default([]),
   gentleFollowUpQuestions: z.array(z.string().min(1)).default([]),
   safetyNote: z.string().optional(),
 });
@@ -88,3 +101,158 @@ export type ApiErrorBody = {
     requestId?: string;
   };
 };
+
+/* -------------------------------------------------------------------------- */
+/* Voice transcription                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Upper bound on the audio upload accepted by POST /ai/transcribe-reflection.
+ * 25 MB matches OpenAI's documented per-file limit for the audio transcription
+ * endpoint, and is comfortably large for a single voice reflection.
+ */
+export const MAX_TRANSCRIPTION_FILE_BYTES = 25 * 1024 * 1024;
+
+/**
+ * Audio container types accepted for transcription. Kept intentionally narrow
+ * to the formats the mobile recorder produces (m4a/aac) plus the common ones
+ * OpenAI supports, so unsupported uploads are rejected before any provider work.
+ */
+export const ALLOWED_TRANSCRIPTION_MIME_TYPES = [
+  "audio/m4a",
+  "audio/x-m4a",
+  "audio/mp4",
+  "audio/aac",
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/webm",
+  "audio/ogg",
+] as const;
+
+export type TranscriptionMimeType =
+  (typeof ALLOWED_TRANSCRIPTION_MIME_TYPES)[number];
+
+/** True when a content type is one we accept for transcription. */
+export function isSupportedTranscriptionMimeType(
+  mimeType: string | null | undefined,
+): boolean {
+  if (!mimeType) {
+    return false;
+  }
+  // Some clients append parameters (e.g. "audio/m4a; codecs=..."). Compare the
+  // bare type only, case-insensitively.
+  const bare = mimeType.split(";")[0]?.trim().toLowerCase() ?? "";
+  return (ALLOWED_TRANSCRIPTION_MIME_TYPES as readonly string[]).includes(bare);
+}
+
+/**
+ * Non-file metadata that accompanies a transcription upload. Sent as multipart
+ * form fields alongside the single audio file. Only identifiers — never any
+ * transcript or audio content.
+ */
+export const transcribeReflectionMetadataSchema = z.object({
+  journalEntryId: z.string().min(1),
+  audioAssetId: z.string().min(1),
+});
+export type TranscribeReflectionMetadata = z.infer<
+  typeof transcribeReflectionMetadataSchema
+>;
+
+/** Structured success body returned by POST /ai/transcribe-reflection. */
+export const transcribeReflectionResponseSchema = z.object({
+  transcript: z.string().min(1),
+  provider: z.string().optional(),
+  model: z.string().optional(),
+});
+export type TranscribeReflectionResponse = z.infer<
+  typeof transcribeReflectionResponseSchema
+>;
+
+/* -------------------------------------------------------------------------- */
+/* Voice entry structuring                                                     */
+/* -------------------------------------------------------------------------- */
+
+/** Prompt identifier persisted/sent for future versioning of structuring. */
+export const STRUCTURE_ENTRY_PROMPT_VERSION = "structure-entry-v1";
+
+/**
+ * Defensive upper bound on the transcript length the server will structure.
+ * A spoken note for a single entry is short; this guards the structuring call
+ * if an unexpectedly long transcription comes back from the audio provider.
+ */
+export const MAX_VOICE_ENTRY_TRANSCRIPT_CHARS = 8000;
+
+/**
+ * Entry types that can be created by voice and structured by the AI. These map
+ * 1:1 to the four manual create screens (prayer, gratitude, faithfulness,
+ * lesson). "faithfulness" is the user-facing name for the internal "wins" type.
+ */
+export const voiceEntryTypeSchema = z.enum([
+  "prayer",
+  "gratitude",
+  "faithfulness",
+  "lesson",
+]);
+export type VoiceEntryType = z.infer<typeof voiceEntryTypeSchema>;
+
+/**
+ * Per-type field schemas the AI must produce when structuring a spoken note.
+ * Reuses the existing suggestion shapes so a voice-created entry matches a
+ * journal-suggested one exactly (same fields, same optionality).
+ */
+export const voiceEntryFieldSchemas = {
+  prayer: prayerSuggestionSchema,
+  gratitude: gratitudeSuggestionSchema,
+  faithfulness: faithfulnessMomentSuggestionSchema,
+  lesson: lessonSuggestionSchema,
+} as const;
+
+/**
+ * Non-file metadata that accompanies a structure-voice-entry upload. Sent as
+ * multipart form fields alongside the single audio file. The entry date lets
+ * the model resolve any spoken follow-up time (e.g. "next Monday") for prayer.
+ */
+export const structureVoiceEntryMetadataSchema = z.object({
+  entryType: voiceEntryTypeSchema,
+  entryDate: z.string().min(1),
+});
+export type StructureVoiceEntryMetadata = z.infer<
+  typeof structureVoiceEntryMetadataSchema
+>;
+
+/**
+ * Structured success body returned by POST /ai/structure-voice-entry. A
+ * discriminated union on `entryType` so `fields` is precisely the requested
+ * entry type's shape, alongside the raw transcript the structuring was based on
+ * (shown to the user so they can see what was heard before saving).
+ */
+export const structureVoiceEntryResponseSchema = z.discriminatedUnion(
+  "entryType",
+  [
+    z.object({
+      entryType: z.literal("prayer"),
+      transcript: z.string().min(1),
+      fields: prayerSuggestionSchema,
+    }),
+    z.object({
+      entryType: z.literal("gratitude"),
+      transcript: z.string().min(1),
+      fields: gratitudeSuggestionSchema,
+    }),
+    z.object({
+      entryType: z.literal("faithfulness"),
+      transcript: z.string().min(1),
+      fields: faithfulnessMomentSuggestionSchema,
+    }),
+    z.object({
+      entryType: z.literal("lesson"),
+      transcript: z.string().min(1),
+      fields: lessonSuggestionSchema,
+    }),
+  ],
+);
+export type StructureVoiceEntryResponse = z.infer<
+  typeof structureVoiceEntryResponseSchema
+>;

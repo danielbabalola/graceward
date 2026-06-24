@@ -1,27 +1,52 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { Screen } from "@/components/ui/Screen";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { GratitudeList } from "@/components/gratitude/GratitudeList";
 import { FaithfulnessView } from "@/components/gratitude/FaithfulnessView";
+import { LessonsList } from "@/components/lessons/LessonsList";
+import {
+  DEFAULT_REMEMBER_SEGMENT,
+  parseRememberSegment,
+  type RememberSegment,
+} from "@/lib/remember-segments";
 import { spacing } from "@/theme/tokens";
 
-type GratitudeTab = "gratitudes" | "faithfulness";
-
-const tabOptions: { value: GratitudeTab; label: string }[] = [
-  { value: "gratitudes", label: "Gratitudes" },
+const tabOptions: { value: RememberSegment; label: string }[] = [
+  { value: "gratitudes", label: "Gratitude" },
   { value: "faithfulness", label: "Faithfulness" },
+  { value: "lessons", label: "Lessons" },
 ];
 
-export default function GratitudeScreen() {
-  const [tab, setTab] = useState<GratitudeTab>("gratitudes");
+export default function RememberScreen() {
+  const params = useLocalSearchParams<{ segment?: string }>();
+  const [tab, setTab] = useState<RememberSegment>(DEFAULT_REMEMBER_SEGMENT);
+
+  // Keep the latest param readable inside the focus effect without making the
+  // effect depend on it (which would re-run and clobber a manual selection).
+  const segmentRef = useRef(params.segment);
+  segmentRef.current = params.segment;
+
+  // On each focus: honor a `segment` param if present, then clear it so a later
+  // normal return defaults calmly to Gratitude. With no param, reset to the
+  // default. Manual segment switches while focused are preserved (this only
+  // runs on focus, not on every render).
+  useFocusEffect(
+    useCallback(() => {
+      const raw = segmentRef.current;
+      setTab(parseRememberSegment(raw));
+      if (raw !== undefined) {
+        router.setParams({ segment: undefined });
+      }
+    }, []),
+  );
 
   return (
     <Screen
-      title="Gratitude"
-      subtitle="Notice mercy and remember God's faithfulness — one day at a time."
+      title="Remember"
+      subtitle="Notice mercy, remember God's faithfulness, and hold what you're learning — one day at a time."
     >
       {tab === "gratitudes" ? (
         <View style={styles.addButton}>
@@ -39,6 +64,11 @@ export default function GratitudeScreen() {
           />
         </View>
       ) : null}
+      {tab === "lessons" ? (
+        <View style={styles.addButton}>
+          <Button label="Save a lesson" onPress={() => router.push("/lesson/new")} />
+        </View>
+      ) : null}
 
       <View style={styles.switcher}>
         <SegmentedControl options={tabOptions} value={tab} onChange={setTab} />
@@ -46,6 +76,7 @@ export default function GratitudeScreen() {
 
       {tab === "gratitudes" ? <GratitudeList /> : null}
       {tab === "faithfulness" ? <FaithfulnessView /> : null}
+      {tab === "lessons" ? <LessonsList /> : null}
     </Screen>
   );
 }

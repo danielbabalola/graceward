@@ -2,6 +2,7 @@ import type {
   AudioAsset,
   Gratitude,
   JournalEntry,
+  Lesson,
   PrayerRequest,
   Win,
 } from "@graceward/shared";
@@ -12,6 +13,7 @@ import { listJournalEntries } from "./journal";
 import { listPrayerRequests } from "./prayer";
 import { listGratitudes } from "./gratitude";
 import { listWins } from "./wins";
+import { listLessons } from "./lessons";
 import {
   listSavedSuggestionsForExport,
   type SavedSuggestionExport,
@@ -31,6 +33,7 @@ export type LocalDataExport = {
     prayerRequests: number;
     gratitudes: number;
     faithfulnessMoments: number;
+    lessons: number;
     audioAssets: number;
     savedAiSuggestions: number;
   };
@@ -38,6 +41,7 @@ export type LocalDataExport = {
   prayerRequests: PrayerRequest[];
   gratitudes: Gratitude[];
   faithfulnessMoments: Win[];
+  lessons: Lesson[];
   audioAssets: AudioAsset[];
   // Metadata only (kind + references + timestamps). No raw suggestion text.
   savedAiSuggestions: SavedSuggestionExport[];
@@ -58,6 +62,7 @@ export async function listAllForExport(): Promise<LocalDataExport> {
     prayerRequests,
     gratitudes,
     faithfulnessMoments,
+    lessons,
     audioAssets,
     savedAiSuggestions,
   ] = await Promise.all([
@@ -65,6 +70,7 @@ export async function listAllForExport(): Promise<LocalDataExport> {
     listPrayerRequests(),
     listGratitudes(),
     listWins(),
+    listLessons(),
     listAudioAssetsForExport(),
     listSavedSuggestionsForExport(),
   ]);
@@ -78,6 +84,7 @@ export async function listAllForExport(): Promise<LocalDataExport> {
       prayerRequests: prayerRequests.length,
       gratitudes: gratitudes.length,
       faithfulnessMoments: faithfulnessMoments.length,
+      lessons: lessons.length,
       audioAssets: audioAssets.length,
       savedAiSuggestions: savedAiSuggestions.length,
     },
@@ -85,6 +92,7 @@ export async function listAllForExport(): Promise<LocalDataExport> {
     prayerRequests,
     gratitudes,
     faithfulnessMoments,
+    lessons,
     audioAssets,
     savedAiSuggestions,
   };
@@ -109,6 +117,7 @@ export async function deleteAllLocalData(): Promise<void> {
        DELETE FROM prayer_requests;
        DELETE FROM gratitudes;
        DELETE FROM wins;
+       DELETE FROM lessons;
        DELETE FROM ai_reflection_results;
        DELETE FROM ai_saved_suggestions;
        DELETE FROM app_preferences;`,

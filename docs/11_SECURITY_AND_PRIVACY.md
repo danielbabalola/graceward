@@ -7,23 +7,30 @@ data. It is a draft to inform the App Store privacy labels and a future privacy
 policy. It is **not** finished legal text and must be reviewed before launch.
 
 - **Most data stays local to the device.** Journal entries, prayer requests,
-  gratitude, faithfulness moments, saved AI suggestions, audio, and preferences
-  live in on-device SQLite and the app's local storage. There is no account,
-  cloud sync, or analytics in the MVP.
+  gratitude, faithfulness moments, lessons, saved AI suggestions, audio, and
+  preferences live in on-device SQLite and the app's local storage. There is no
+  account, cloud sync, or analytics in the MVP.
 - **User-initiated AI reflection sends selected text to Graceward's AI service.**
   Only when the user explicitly taps through and consents, the chosen reflection
   text is sent to the Graceward API, which calls the AI provider server-side.
   Nothing is sent in the background or automatically.
-- **Voice recordings are local and not transcribed yet.** Audio is recorded and
-  played back on-device only. There is no transcription pipeline, so voice
-  entries are not sent anywhere and cannot be AI-analyzed in the MVP.
+- **Voice transcription is manual and user-initiated.** Audio is recorded and
+  played back on-device. A recording is transcribed only when the user taps
+  "Transcribe this reflection" and confirms a separate consent notice; only that
+  selected recording is sent to the Graceward API, which calls the transcription
+  provider server-side. The transcript is saved locally in the journal entry's
+  text (editable) and transcribing does not delete the original audio. AI
+  reflection on a transcribed voice entry uses the transcript text only — never
+  the raw audio. Nothing is transcribed automatically or in the background.
 - **Export excludes raw audio files.** "Export my data" produces a JSON snapshot
   of local content plus audio *metadata only* — no raw audio bytes, and AI
-  suggestion entries are metadata only. The OS share sheet keeps sharing under
-  the user's control.
+  suggestion entries are metadata only. Once a voice reflection is transcribed,
+  the transcript is part of that entry's journal text and is exported as such.
+  The OS share sheet keeps sharing under the user's control.
 - **Delete local data clears local content, audio, and preferences.** "Delete"
-  permanently removes all local content rows and on-device audio files and
-  resets preferences (including the AI consent acknowledgement). It cannot be
+  permanently removes all local content rows (including saved transcripts within
+  journal text) and on-device audio files, and resets preferences (including the
+  AI reflection and voice transcription consent acknowledgements). It cannot be
   undone.
 
 To verify against the labels: review App Store data categories as User Content
@@ -147,6 +154,7 @@ Not allowed in normal logs:
 - raw transcripts
 - raw prayer requests
 - raw gratitudes
+- raw lessons
 - raw audio
 - private reflections
 

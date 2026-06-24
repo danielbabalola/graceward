@@ -1,11 +1,13 @@
+import { voiceEntryFieldSchemas } from "@graceward/ai-schemas";
 import {
-  analyzeReflectionResponseSchema,
-  MAX_FOLLOW_UP_QUESTIONS,
-  MAX_SUGGESTIONS_PER_KIND,
-  type AnalyzeReflectionResponse,
-} from "@graceward/ai-schemas";
-import { buildUserPrompt, REFLECTION_SYSTEM_PROMPT } from "./prompt.js";
-import { AiError, type ReflectionAnalysisProvider } from "./types.js";
+  buildStructureSystemPrompt,
+  buildStructureUserPrompt,
+} from "./structure-entry-prompt.js";
+import { AiError } from "./types.js";
+import type {
+  EntryStructuringProvider,
+  VoiceEntryFields,
+} from "./structure-entry-types.js";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = "gpt-5.4-mini";
@@ -22,12 +24,12 @@ function resolveTimeoutMs(): number {
 }
 
 /**
- * OpenAI-backed reflection analysis provider. Reads the API key from the
- * server environment only and requests structured JSON output. Throws AiError
- * with non-sensitive codes; never logs or rethrows raw reflection/provider
- * content.
+ * OpenAI-backed entry-structuring provider. Reads the API key from the server
+ * environment only and requests structured JSON output for a single entry
+ * type. Throws AiError with non-sensitive codes; never logs or rethrows raw
+ * transcript/provider content.
  */
-export function createOpenAiProvider(): ReflectionAnalysisProvider {
+export function createOpenAiStructuringProvider(): EntryStructuringProvider {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     throw new AiError(
@@ -38,30 +40,27 @@ export function createOpenAiProvider(): ReflectionAnalysisProvider {
   }
   const model = process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
   // Optional, for reasoning models (gpt-5.x): minimal | low | medium | high.
-  // Left unset for non-reasoning models (e.g. gpt-4o-mini), which reject it.
   const reasoningEffort = process.env.OPENAI_REASONING_EFFORT?.trim();
 
   return {
     name: "openai",
     model,
-    async analyze(input) {
-      // Note: temperature is intentionally omitted. Reasoning models (gpt-5.x)
-      // reject non-default temperature, so leaving it at the provider default
-      // keeps this provider compatible across both model families.
+    async structure(input) {
       const requestBody: Record<string, unknown> = {
         model,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: REFLECTION_SYSTEM_PROMPT },
-          { role: "user", content: buildUserPrompt(input) },
+          {
+            role: "system",
+            content: buildStructureSystemPrompt(input.entryType),
+          },
+          { role: "user", content: buildStructureUserPrompt(input) },
         ],
       };
       if (reasoningEffort) {
         requestBody.reasoning_effort = reasoningEffort;
       }
 
-      // Bound the provider call so a slow/hung upstream can't hold the request
-      // open indefinitely. AbortController fires after the resolved timeout.
       const controller = new AbortController();
       const timeoutMs = resolveTimeoutMs();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -78,8 +77,6 @@ export function createOpenAiProvider(): ReflectionAnalysisProvider {
           signal: controller.signal,
         });
       } catch {
-        // Distinguish a timeout (we aborted) from a generic connectivity error.
-        // Neither path surfaces provider internals, secrets, or content.
         if (controller.signal.aborted) {
           throw new AiError(
             "AI_TIMEOUT",
@@ -136,7 +133,8 @@ export function createOpenAiProvider(): ReflectionAnalysisProvider {
         );
       }
 
-      const result = analyzeReflectionResponseSchema.safeParse(parsedJson);
+      const schema = voiceEntryFieldSchemas[input.entryType];
+      const result = schema.safeParse(parsedJson);
       if (!result.success) {
         throw new AiError(
           "AI_INVALID_RESPONSE",
@@ -145,7 +143,7 @@ export function createOpenAiProvider(): ReflectionAnalysisProvider {
         );
       }
 
-      return clampResult(result.data);
+      return result.data as VoiceEntryFields;
     },
   };
 }
@@ -168,31 +166,4 @@ function extractMessageContent(payload: unknown): string | null {
   }
   const content = (message as { content?: unknown }).content;
   return typeof content === "string" ? content : null;
-}
-
-/** Defensive cap on list sizes regardless of what the model returns. Exported
- * for unit testing the caps in isolation. */
-export function clampResult(
-  result: AnalyzeReflectionResponse,
-): AnalyzeReflectionResponse {
-  return {
-    ...result,
-    prayerSuggestions: result.prayerSuggestions.slice(
-      0,
-      MAX_SUGGESTIONS_PER_KIND,
-    ),
-    gratitudeSuggestions: result.gratitudeSuggestions.slice(
-      0,
-      MAX_SUGGESTIONS_PER_KIND,
-    ),
-    faithfulnessMomentSuggestions: result.faithfulnessMomentSuggestions.slice(
-      0,
-      MAX_SUGGESTIONS_PER_KIND,
-    ),
-    lessonSuggestions: result.lessonSuggestions.slice(0, MAX_SUGGESTIONS_PER_KIND),
-    gentleFollowUpQuestions: result.gentleFollowUpQuestions.slice(
-      0,
-      MAX_FOLLOW_UP_QUESTIONS,
-    ),
-  };
 }

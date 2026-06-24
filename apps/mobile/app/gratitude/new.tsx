@@ -9,10 +9,12 @@ import {
   View,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import type { StructureVoiceEntryResponse } from "@graceward/ai-schemas";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
-import { createGratitude } from "@/lib/db";
+import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
+import { createGratitude, toLocalDateString } from "@/lib/db";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function NewGratitudeScreen() {
@@ -24,6 +26,14 @@ export default function NewGratitudeScreen() {
   const [saving, setSaving] = useState(false);
 
   const canSave = content.trim().length > 0 && !saving;
+
+  function handleStructured(result: StructureVoiceEntryResponse) {
+    if (result.entryType !== "gratitude") {
+      return;
+    }
+    setContent(result.fields.content);
+    setCategory(result.fields.category ?? "");
+  }
 
   async function handleSave() {
     if (!canSave) {
@@ -37,7 +47,10 @@ export default function NewGratitudeScreen() {
         journalEntryId: sourceJournalEntryId ?? null,
         syncStatus: "local_only",
       });
-      router.replace("/(tabs)/gratitude");
+      router.replace({
+        pathname: "/(tabs)/gratitude",
+        params: { segment: "gratitude" },
+      });
     } catch (error: unknown) {
       // Never log raw gratitude content — only an error category.
       console.warn(
@@ -66,6 +79,15 @@ export default function NewGratitudeScreen() {
             pressable={false}
           />
         ) : null}
+
+        <VoiceEntryCapture
+          entryType="gratitude"
+          entryDate={toLocalDateString(new Date())}
+          onStructured={handleStructured}
+          hasExistingInput={
+            content.trim().length > 0 || category.trim().length > 0
+          }
+        />
 
         <View style={styles.field}>
           <Text style={styles.label}>What are you grateful for?</Text>

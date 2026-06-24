@@ -11,32 +11,30 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import type { StructureVoiceEntryResponse } from "@graceward/ai-schemas";
 import { Button } from "@/components/ui/Button";
-import { DateSelector } from "@/components/ui/DateSelector";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
-import { createPrayerRequest, toLocalDateString } from "@/lib/db";
+import { createLesson, toLocalDateString } from "@/lib/db";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
-export default function NewPrayerRequestScreen() {
+export default function NewLessonScreen() {
   const { sourceJournalEntryId } = useLocalSearchParams<{
     sourceJournalEntryId?: string;
   }>();
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [followUp, setFollowUp] = useState<string | null>(null);
+  const [content, setContent] = useState("");
+  const [theme, setTheme] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const trimmedTitle = title.trim();
-  const canSave = trimmedTitle.length > 0 && !saving;
+  const canSave = title.trim().length > 0 && content.trim().length > 0 && !saving;
 
   function handleStructured(result: StructureVoiceEntryResponse) {
-    if (result.entryType !== "prayer") {
+    if (result.entryType !== "lesson") {
       return;
     }
     setTitle(result.fields.title);
-    setDescription(result.fields.description ?? "");
-    setFollowUp(result.fields.followUpAt ?? null);
+    setContent(result.fields.content);
+    setTheme(result.fields.theme ?? "");
   }
 
   async function handleSave() {
@@ -45,25 +43,27 @@ export default function NewPrayerRequestScreen() {
     }
     setSaving(true);
     try {
-      await createPrayerRequest({
-        title: trimmedTitle,
-        description:
-          description.trim().length > 0 ? description.trim() : null,
-        followUpAt: followUp,
-        status: "active",
+      await createLesson({
+        title: title.trim(),
+        content: content.trim(),
+        theme: theme.trim().length > 0 ? theme.trim() : null,
         sourceJournalEntryId: sourceJournalEntryId ?? null,
+        status: "active",
         syncStatus: "local_only",
       });
-      router.replace("/(tabs)/prayer");
+      router.replace({
+        pathname: "/(tabs)/gratitude",
+        params: { segment: "lessons" },
+      });
     } catch (error: unknown) {
-      // Never log raw prayer content — only an error category.
+      // Never log raw lesson content — only an error category.
       console.warn(
-        "Failed to save prayer request:",
+        "Failed to save lesson:",
         error instanceof Error ? error.message : "unknown error",
       );
       Alert.alert(
         "Could not save",
-        "Your prayer request could not be saved just now. Please try again.",
+        "This lesson could not be saved just now. Please try again.",
       );
       setSaving(false);
     }
@@ -71,8 +71,8 @@ export default function NewPrayerRequestScreen() {
 
   return (
     <FlowScreen
-      title="Add prayer request"
-      subtitle="Bring something before God in your own words."
+      title="Save a lesson"
+      subtitle="Notice what you're learning, or something God may be forming in you. Held humbly, in your own words."
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -85,60 +85,64 @@ export default function NewPrayerRequestScreen() {
         ) : null}
 
         <VoiceEntryCapture
-          entryType="prayer"
+          entryType="lesson"
           entryDate={toLocalDateString(new Date())}
           onStructured={handleStructured}
           hasExistingInput={
-            title.trim().length > 0 || description.trim().length > 0
+            title.trim().length > 0 ||
+            content.trim().length > 0 ||
+            theme.trim().length > 0
           }
         />
 
         <View style={styles.field}>
-          <Text style={styles.label}>Title</Text>
+          <Text style={styles.label}>A lesson I'm noticing</Text>
           <View style={styles.inputWrapper}>
             <TextInput
               value={title}
               onChangeText={setTitle}
-              placeholder="What are you praying for?"
+              placeholder="A short name for this lesson…"
               placeholderTextColor={colors.textSubtle}
               autoFocus
-              style={styles.titleInput}
-              accessibilityLabel="Prayer request title"
+              style={styles.singleLineInput}
+              accessibilityLabel="Lesson title"
             />
           </View>
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Details (optional)</Text>
+          <Text style={styles.label}>What I'm learning</Text>
           <View style={styles.inputWrapper}>
             <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Anything more you'd like to remember or bring before God…"
+              value={content}
+              onChangeText={setContent}
+              placeholder="In your own words — what you're noticing or sensing God may be forming in you…"
               placeholderTextColor={colors.textSubtle}
               multiline
               textAlignVertical="top"
-              style={styles.descriptionInput}
-              accessibilityLabel="Prayer request details"
+              style={styles.contentInput}
+              accessibilityLabel="Lesson content"
             />
           </View>
         </View>
 
-        <DateSelector
-          label="Follow-up date (optional)"
-          value={followUp}
-          onChange={setFollowUp}
-          disablePast
-          allowClear
-          emptyLabel="No follow-up date"
-          hint="Choose when you'd like to revisit this. Today or a future day."
-        />
+        <View style={styles.field}>
+          <Text style={styles.label}>Theme (optional)</Text>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              value={theme}
+              onChangeText={setTheme}
+              placeholder="e.g. Trust, Patience, Surrender"
+              placeholderTextColor={colors.textSubtle}
+              style={styles.singleLineInput}
+              accessibilityLabel="Lesson theme"
+            />
+          </View>
+        </View>
 
-        <Text style={styles.hint}>
-          Saved privately on this device only.
-        </Text>
+        <Text style={styles.hint}>Saved privately on this device only.</Text>
         <Button
-          label="Save prayer request"
+          label="Save lesson"
           onPress={handleSave}
           disabled={!canSave}
           loading={saving}
@@ -164,19 +168,14 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.md,
   },
-  titleInput: {
-    ...typography.body,
-    color: colors.text,
-  },
-  descriptionInput: {
+  contentInput: {
     ...typography.body,
     color: colors.text,
     minHeight: 120,
   },
-  errorHint: {
-    ...typography.bodySmall,
-    color: colors.correctionAccent,
-    marginTop: spacing.sm,
+  singleLineInput: {
+    ...typography.body,
+    color: colors.text,
   },
   hint: {
     ...typography.bodySmall,

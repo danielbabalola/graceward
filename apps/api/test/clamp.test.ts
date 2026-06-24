@@ -19,6 +19,10 @@ function oversizedResult(n: number): AnalyzeReflectionResponse {
     faithfulnessMomentSuggestions: Array.from({ length: n }, (_, i) => ({
       content: `moment ${i}`,
     })),
+    lessonSuggestions: Array.from({ length: n }, (_, i) => ({
+      title: `lesson ${i}`,
+      content: `content ${i}`,
+    })),
     gentleFollowUpQuestions: Array.from({ length: n }, (_, i) => `question ${i}`),
   };
 }
@@ -31,6 +35,7 @@ describe("clampResult", () => {
     expect(clamped.faithfulnessMomentSuggestions.length).toBe(
       MAX_SUGGESTIONS_PER_KIND,
     );
+    expect(clamped.lessonSuggestions.length).toBe(MAX_SUGGESTIONS_PER_KIND);
     expect(clamped.gentleFollowUpQuestions.length).toBe(MAX_FOLLOW_UP_QUESTIONS);
   });
 
@@ -40,10 +45,12 @@ describe("clampResult", () => {
       prayerSuggestions: [{ title: "one", description: "" }],
       gratitudeSuggestions: [],
       faithfulnessMomentSuggestions: [],
+      lessonSuggestions: [{ title: "lesson", content: "content" }],
       gentleFollowUpQuestions: ["only one"],
     };
     const clamped = clampResult(result);
     expect(clamped.prayerSuggestions.length).toBe(1);
+    expect(clamped.lessonSuggestions.length).toBe(1);
     expect(clamped.gentleFollowUpQuestions.length).toBe(1);
   });
 });

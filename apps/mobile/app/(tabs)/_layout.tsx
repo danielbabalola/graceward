@@ -52,9 +52,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="gratitude"
         options={{
-          title: "Gratitude",
+          title: "Remember",
           tabBarIcon: ({ color }) => (
-            <TabIcon name="leaf-outline" color={color} />
+            <TabIcon name="bookmark-outline" color={color} />
           ),
         }}
       />

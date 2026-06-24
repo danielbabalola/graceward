@@ -68,7 +68,10 @@ export type TranscriptionStatus =
   | "none"
   | "pending"
   | "processing"
+  // Manual voice transcription v1 uses "completed" for a finished transcript.
+  // "complete" is retained for backward compatibility with earlier data.
   | "complete"
+  | "completed"
   | "failed";
 
 export type RetentionPolicy =
@@ -177,4 +180,39 @@ export type CreateWinInput = {
 export type UpdateWinInput = {
   content?: string;
   faithfulnessTheme?: string | null;
+};
+
+export type LessonStatus = "active" | "archived";
+
+/**
+ * A lesson is something the user is learning, noticing, or discerning with God.
+ * Humble by design — it records the user's own reflection, never a claim that
+ * "God said" anything. Stored locally only, like every other content table.
+ */
+export type Lesson = {
+  id: string;
+  title: string;
+  content: string;
+  theme: string | null;
+  sourceJournalEntryId: string | null;
+  status: LessonStatus;
+  syncStatus: SyncStatus;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+export type CreateLessonInput = {
+  title: string;
+  content: string;
+  theme?: string | null;
+  sourceJournalEntryId?: string | null;
+  status?: LessonStatus;
+  syncStatus?: SyncStatus;
+};
+
+export type UpdateLessonInput = {
+  title?: string;
+  content?: string;
+  theme?: string | null;
 };

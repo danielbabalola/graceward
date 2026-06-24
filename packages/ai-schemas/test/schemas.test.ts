@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeReflectionRequestSchema,
   analyzeReflectionResponseSchema,
+  lessonSuggestionSchema,
   prayerSuggestionSchema,
   MAX_REFLECTION_CHARS,
 } from "../src/index.js";
@@ -74,6 +75,9 @@ describe("analyzeReflectionResponseSchema", () => {
     prayerSuggestions: [{ title: "Rest", description: "Ask God for rest." }],
     gratitudeSuggestions: [{ content: "A quiet morning" }],
     faithfulnessMomentSuggestions: [{ content: "Kept going" }],
+    lessonSuggestions: [
+      { title: "Showing up matters", content: "You may be learning to keep going." },
+    ],
     gentleFollowUpQuestions: ["What helped you keep showing up?"],
   };
 
@@ -86,6 +90,7 @@ describe("analyzeReflectionResponseSchema", () => {
       expect(parsed.data.prayerSuggestions).toEqual([]);
       expect(parsed.data.gratitudeSuggestions).toEqual([]);
       expect(parsed.data.faithfulnessMomentSuggestions).toEqual([]);
+      expect(parsed.data.lessonSuggestions).toEqual([]);
       expect(parsed.data.gentleFollowUpQuestions).toEqual([]);
     }
   });
@@ -116,6 +121,46 @@ describe("analyzeReflectionResponseSchema", () => {
       prayerSuggestions: [{ description: "no title here" }],
     });
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe("lessonSuggestionSchema", () => {
+  it("accepts a lesson with title and content", () => {
+    const parsed = lessonSuggestionSchema.safeParse({
+      title: "Trusting in waiting",
+      content: "You may be noticing patience growing as you wait.",
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("accepts an optional theme", () => {
+    const parsed = lessonSuggestionSchema.safeParse({
+      title: "Trusting in waiting",
+      content: "Patience is growing.",
+      theme: "Trust",
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects a lesson without a title", () => {
+    const parsed = lessonSuggestionSchema.safeParse({
+      content: "no title here",
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects a lesson without content", () => {
+    const parsed = lessonSuggestionSchema.safeParse({ title: "no content" });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects empty strings", () => {
+    expect(
+      lessonSuggestionSchema.safeParse({ title: "", content: "x" }).success,
+    ).toBe(false);
+    expect(
+      lessonSuggestionSchema.safeParse({ title: "x", content: "" }).success,
+    ).toBe(false);
   });
 });
 

@@ -18,8 +18,11 @@ const app = buildApp();
 // silently. Remove once real auth/entitlements land.
 if ((process.env.NODE_ENV ?? "").toLowerCase() === "production") {
   app.log.warn(
-    { category: "PRODUCTION_SAFETY", endpoint: "/ai/analyze-reflection" },
-    "AI endpoint has no auth or subscription enforcement yet; it is protected only by in-memory IP rate limiting. Do not treat this as production-ready access control.",
+    {
+      category: "PRODUCTION_SAFETY",
+      endpoints: ["/ai/analyze-reflection", "/ai/transcribe-reflection"],
+    },
+    "AI endpoints have no auth or subscription enforcement yet; they are protected only by in-memory IP rate limiting. Do not treat this as production-ready access control.",
   );
 }
 
