@@ -6,6 +6,7 @@ import type {
   UpdatePrayerRequestInput,
 } from "@graceward/shared";
 import { getDatabase } from "./client";
+import { toLocalDateString } from "./helpers";
 
 type PrayerRequestRow = {
   id: string;
@@ -108,6 +109,67 @@ export async function listPrayerRequestsByStatus(
   return rows.map(mapRow);
 }
 
+/**
+ * Selects the single prayer request to surface on the Today screen.
+ *
+ * Preference order:
+ * 1. An active request whose follow-up date is today or earlier (most overdue
+ *    first), so the user is gently reminded of what they meant to revisit.
+ * 2. Otherwise the most recently created active request.
+ *
+ * `date(follow_up_at)` normalizes both date-only (YYYY-MM-DD) and full ISO
+ * values to a comparable calendar day.
+ */
+export async function getPrayerFocus(): Promise<PrayerRequest | null> {
+  const db = await getDatabase();
+  const today = toLocalDateString(new Date());
+
+  const due = await db.getFirstAsync<PrayerRequestRow>(
+    `SELECT * FROM prayer_requests
+      WHERE status = 'active' AND deleted_at IS NULL
+        AND follow_up_at IS NOT NULL
+        AND date(follow_up_at) <= ?
+      ORDER BY date(follow_up_at) ASC, created_at DESC
+      LIMIT 1`,
+    [today],
+  );
+  if (due) {
+    return mapRow(due);
+  }
+
+  const recent = await db.getFirstAsync<PrayerRequestRow>(
+    `SELECT * FROM prayer_requests
+      WHERE status = 'active' AND deleted_at IS NULL
+      ORDER BY created_at DESC
+      LIMIT 1`,
+  );
+  return recent ? mapRow(recent) : null;
+}
+
+export async function listPrayerRequestsBySourceJournalEntryId(
+  journalEntryId: string,
+): Promise<PrayerRequest[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<PrayerRequestRow>(
+    `SELECT * FROM prayer_requests
+      WHERE source_journal_entry_id = ? AND deleted_at IS NULL
+      ORDER BY created_at DESC`,
+    [journalEntryId],
+  );
+  return rows.map(mapRow);
+}
+
+export async function getMostRecentAnsweredPrayer(): Promise<PrayerRequest | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<PrayerRequestRow>(
+    `SELECT * FROM prayer_requests
+      WHERE status = 'answered' AND deleted_at IS NULL
+      ORDER BY answered_at DESC, created_at DESC
+      LIMIT 1`,
+  );
+  return row ? mapRow(row) : null;
+}
+
 export async function getPrayerRequestById(
   id: string,
 ): Promise<PrayerRequest | null> {
@@ -180,6 +242,32 @@ export async function archivePrayerRequest(
   await db.runAsync(
     `UPDATE prayer_requests
       SET status = 'archived', updated_at = ?
+      WHERE id = ? AND deleted_at IS NULL`,
+    [nowIso, id],
+  );
+
+  return getPrayerRequestById(id);
+}
+
+/**
+ * Moves an archived or answered request back to Active.
+ *
+ * MVP decision: the schema has a single `status` column, so it cannot reliably
+ * distinguish "archived from active" vs "archived after being answered". We
+ * therefore choose the simpler, consistent behavior — an active request carries
+ * no answered metadata, matching how requests are first created — by clearing
+ * `answered_at` and `answer_description` on reactivation.
+ */
+export async function reactivatePrayerRequest(
+  id: string,
+): Promise<PrayerRequest | null> {
+  const db = await getDatabase();
+  const nowIso = new Date().toISOString();
+
+  await db.runAsync(
+    `UPDATE prayer_requests
+      SET status = 'active', answered_at = NULL, answer_description = NULL,
+          updated_at = ?
       WHERE id = ? AND deleted_at IS NULL`,
     [nowIso, id],
   );

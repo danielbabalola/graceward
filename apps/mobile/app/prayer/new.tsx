@@ -8,24 +8,25 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "@/components/ui/Button";
+import { DateSelector } from "@/components/ui/DateSelector";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
+import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import { createPrayerRequest } from "@/lib/db";
-import { isValidDateOnly } from "@/lib/prayer-display";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function NewPrayerRequestScreen() {
+  const { sourceJournalEntryId } = useLocalSearchParams<{
+    sourceJournalEntryId?: string;
+  }>();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [followUp, setFollowUp] = useState("");
+  const [followUp, setFollowUp] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const trimmedTitle = title.trim();
-  const trimmedFollowUp = followUp.trim();
-  const followUpValid =
-    trimmedFollowUp.length === 0 || isValidDateOnly(trimmedFollowUp);
-  const canSave = trimmedTitle.length > 0 && followUpValid && !saving;
+  const canSave = trimmedTitle.length > 0 && !saving;
 
   async function handleSave() {
     if (!canSave) {
@@ -37,8 +38,9 @@ export default function NewPrayerRequestScreen() {
         title: trimmedTitle,
         description:
           description.trim().length > 0 ? description.trim() : null,
-        followUpAt: trimmedFollowUp.length > 0 ? trimmedFollowUp : null,
+        followUpAt: followUp,
         status: "active",
+        sourceJournalEntryId: sourceJournalEntryId ?? null,
         syncStatus: "local_only",
       });
       router.replace("/(tabs)/prayer");
@@ -64,6 +66,13 @@ export default function NewPrayerRequestScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
+        {sourceJournalEntryId ? (
+          <SourceReflectionLink
+            journalEntryId={sourceJournalEntryId}
+            pressable={false}
+          />
+        ) : null}
+
         <View style={styles.field}>
           <Text style={styles.label}>Title</Text>
           <View style={styles.inputWrapper}>
@@ -95,27 +104,15 @@ export default function NewPrayerRequestScreen() {
           </View>
         </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Follow-up date (optional)</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              value={followUp}
-              onChangeText={setFollowUp}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textSubtle}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="numbers-and-punctuation"
-              style={styles.titleInput}
-              accessibilityLabel="Follow-up date"
-            />
-          </View>
-          {!followUpValid ? (
-            <Text style={styles.errorHint}>
-              Please use the format YYYY-MM-DD, or leave this blank.
-            </Text>
-          ) : null}
-        </View>
+        <DateSelector
+          label="Follow-up date (optional)"
+          value={followUp}
+          onChange={setFollowUp}
+          disablePast
+          allowClear
+          emptyLabel="No follow-up date"
+          hint="Choose when you'd like to revisit this. Today or a future day."
+        />
 
         <Text style={styles.hint}>
           Saved privately on this device only.

@@ -79,6 +79,44 @@ export function formatEntryDate(entryDate: string): string {
 
 const MAX_PREVIEW_LENGTH = 120;
 
+/** Calm secondary line for an entry: date · mode · input type. */
+export function entryMetaLine(entry: JournalEntry): string {
+  return `${formatEntryDate(entry.entryDate)} · ${modeLabel(entry.mode)} · ${inputTypeLabel(
+    entry.inputType,
+  )}`;
+}
+
+/**
+ * A short body preview for an entry's raw text, or null when the entry has no
+ * text (e.g. a voice-only reflection). Distinct from `entryPreview`, which
+ * falls back to the title; here we only return actual body text so callers can
+ * show a calm voice label instead.
+ */
+export function journalBodyPreview(entry: JournalEntry): string | null {
+  const raw = entry.rawText?.trim();
+  if (!raw) {
+    return null;
+  }
+  const firstLine = raw.split("\n")[0]?.trim() ?? raw;
+  if (firstLine.length <= MAX_PREVIEW_LENGTH) {
+    return firstLine;
+  }
+  return `${firstLine.slice(0, MAX_PREVIEW_LENGTH).trimEnd()}…`;
+}
+
+/**
+ * Short, calm label for a journal entry used when linking another item back to
+ * its source reflection. Voice-only entries without a title read as a generic
+ * voice reflection rather than exposing any body text.
+ */
+export function sourceReflectionLabel(entry: JournalEntry): string {
+  const title = entry.title?.trim();
+  if (title) {
+    return title;
+  }
+  return entry.inputType === "voice" ? "Voice reflection" : "Untitled reflection";
+}
+
 export function entryPreview(entry: JournalEntry): string {
   if (entry.title && entry.title.trim().length > 0) {
     return entry.title;

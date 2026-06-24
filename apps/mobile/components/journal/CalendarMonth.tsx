@@ -31,6 +31,12 @@ type CalendarMonthProps = {
    * selectable (default behaviour used by the Journal calendar).
    */
   maxDate?: string;
+  /**
+   * Optional earliest selectable date (YYYY-MM-DD). Days before this are shown
+   * disabled, and the previous-month control is disabled once the whole
+   * previous month is before it.
+   */
+  minDate?: string;
 };
 
 export function CalendarMonth({
@@ -43,6 +49,7 @@ export function CalendarMonth({
   onNextMonth,
   onSelectDate,
   maxDate,
+  minDate,
 }: CalendarMonthProps) {
   const weeks = getMonthMatrix(year, monthIndex);
   // Disable forward navigation once the first day of the next month is already
@@ -50,15 +57,35 @@ export function CalendarMonth({
   const nextMonthDisabled = maxDate
     ? toDateString(year, monthIndex + 1, 1) > maxDate
     : false;
+  // Disable backward navigation once the last day of the previous month is
+  // already before minDate (i.e. the entire previous month is in the past).
+  const prevMonthDisabled = minDate
+    ? (() => {
+        const lastOfPrev = new Date(year, monthIndex, 0);
+        return (
+          toDateString(
+            lastOfPrev.getFullYear(),
+            lastOfPrev.getMonth(),
+            lastOfPrev.getDate(),
+          ) < minDate
+        );
+      })()
+    : false;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable
           onPress={onPrevMonth}
+          disabled={prevMonthDisabled}
           accessibilityRole="button"
           accessibilityLabel="Previous month"
-          style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}
+          accessibilityState={{ disabled: prevMonthDisabled }}
+          style={({ pressed }) => [
+            styles.navButton,
+            pressed && !prevMonthDisabled && styles.pressed,
+            prevMonthDisabled && styles.navButtonDisabled,
+          ]}
         >
           <Ionicons name="chevron-back" size={20} color={colors.primaryDeep} />
         </Pressable>
@@ -101,7 +128,10 @@ export function CalendarMonth({
               isSelected={cell?.dateString === selectedDate}
               hasEntries={cell ? markedDates.has(cell.dateString) : false}
               isDisabled={
-                cell && maxDate ? cell.dateString > maxDate : false
+                cell
+                  ? (maxDate ? cell.dateString > maxDate : false) ||
+                    (minDate ? cell.dateString < minDate : false)
+                  : false
               }
               onSelectDate={onSelectDate}
             />

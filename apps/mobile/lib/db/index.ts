@@ -3,6 +3,7 @@ export { runMigrations } from "./migrations";
 export {
   createJournalEntry,
   listJournalEntries,
+  getMostRecentJournalEntry,
   listJournalEntriesByDate,
   listJournalEntryDatesForMonth,
   getJournalEntryById,
@@ -13,22 +14,31 @@ export type { UpdateJournalEntryInput } from "./journal";
 export {
   createAudioAsset,
   getAudioAssetByEntryId,
+  listAudioAssetsForExport,
   softDeleteAudioAssetsForEntry,
 } from "./audio";
+export { listAllForExport, deleteAllLocalData } from "./data-management";
+export type { LocalDataExport } from "./data-management";
 export {
   createPrayerRequest,
   listPrayerRequests,
   listPrayerRequestsByStatus,
+  listPrayerRequestsBySourceJournalEntryId,
+  getPrayerFocus,
+  getMostRecentAnsweredPrayer,
   getPrayerRequestById,
   updatePrayerRequest,
   markPrayerRequestAnswered,
   archivePrayerRequest,
+  reactivatePrayerRequest,
   softDeletePrayerRequest,
 } from "./prayer";
 export {
   createGratitude,
   listGratitudes,
   listRecentGratitudes,
+  listGratitudesByJournalEntryId,
+  getMostRecentGratitude,
   getGratitudeById,
   updateGratitude,
   softDeleteGratitude,
@@ -37,6 +47,8 @@ export {
   createWin,
   listWins,
   listRecentWins,
+  listWinsByJournalEntryId,
+  getMostRecentWin,
   getWinById,
   updateWin,
   softDeleteWin,

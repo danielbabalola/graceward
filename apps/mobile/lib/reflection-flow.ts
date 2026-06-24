@@ -99,33 +99,33 @@ export const guidedModeConfigs: Record<GuidedMode, GuidedModeConfig> = {
     prompts: [
       {
         id: "happened",
-        label: "What happened today?",
-        placeholder: "Walk through your day as it comes to mind…",
+        label: "What stood out from today?",
+        placeholder: "Notice what lingers — a moment, a person, a feeling…",
       },
       {
         id: "heavy",
-        label: "What felt heavy?",
-        placeholder: "Name what weighed on you, even quietly…",
+        label: "What felt heavy or unresolved?",
+        placeholder: "Name what weighed on you or is still unsettled…",
       },
       {
-        id: "good",
-        label: "What felt good?",
-        placeholder: "Notice anything that brought light or ease…",
+        id: "thankful",
+        label: "What are you thankful for?",
+        placeholder: "A gift, large or small, you can give thanks for…",
       },
       {
         id: "grace",
-        label: "Where did you notice God's grace?",
-        placeholder: "A moment, a person, a provision, a peace…",
+        label: "Where did you notice God's grace, help, or patience?",
+        placeholder: "A moment, a person, a provision, a quiet peace…",
       },
       {
         id: "confess",
-        label: "Is there anything you need to confess, surrender, or revisit?",
+        label: "Is there anything you need to confess, surrender, or make right?",
         placeholder: "Bring it honestly — there is no condemnation here…",
       },
       {
         id: "pray",
-        label: "What do you want to pray about?",
-        placeholder: "Put words to what you're carrying to God…",
+        label: "What would you like to bring to God in prayer?",
+        placeholder: "Put words to what you're carrying to Him…",
       },
     ],
   },
@@ -140,7 +140,7 @@ export const guidedModeConfigs: Record<GuidedMode, GuidedModeConfig> = {
     prompts: [
       {
         id: "happened",
-        label: "What happened?",
+        label: "What happened, or what are you carrying?",
         placeholder: "Describe what brought you here…",
       },
       {
@@ -154,14 +154,19 @@ export const guidedModeConfigs: Record<GuidedMode, GuidedModeConfig> = {
         placeholder: "Ask boldly. You are allowed to long out loud…",
       },
       {
+        id: "hard_to_trust",
+        label: "What is hard to believe or trust right now?",
+        placeholder: "Name the doubt honestly — He can hold your questions…",
+      },
+      {
         id: "true",
         label: "What do you know is still true about God?",
         placeholder: "Even now, what holds — His character, His promises…",
       },
       {
         id: "trust",
-        label: "What would trust look like today?",
-        placeholder: "Not pretending — just one small step toward Him…",
+        label: "What would it look like to bring this honestly before Him today?",
+        placeholder: "Not pretending — just one honest step toward Him…",
       },
     ],
   },
@@ -175,28 +180,33 @@ export const guidedModeConfigs: Record<GuidedMode, GuidedModeConfig> = {
     prompts: [
       {
         id: "good",
-        label: "What good thing happened today?",
+        label: "What good thing happened, even if it was small?",
         placeholder: "Name something specific, however small…",
       },
       {
+        id: "thankful",
+        label: "What are you thankful for today?",
+        placeholder: "Give thanks for a gift you might otherwise overlook…",
+      },
+      {
         id: "answered",
-        label: "What prayer may God be answering?",
+        label: "What prayer, desire, or hope might God be answering?",
         placeholder: "Something you've been bringing to Him…",
       },
       {
-        id: "mercy",
-        label: "What ordinary mercy did you experience?",
-        placeholder: "Rest, food, a kind word, a quiet moment…",
-      },
-      {
         id: "blessed",
-        label: "Who did God use to bless you?",
+        label: "Who did God use to bless, encourage, or help you?",
         placeholder: "A person who carried His care to you…",
       },
       {
         id: "care",
-        label: "What does this reveal about God's care?",
+        label: "What does this reveal about God's care, kindness, or faithfulness?",
         placeholder: "What might He be showing you about His heart…",
+      },
+      {
+        id: "respond",
+        label: "How do you want to respond to Him?",
+        placeholder: "Worship, thanks, trust, obedience — what stirs in you…",
       },
     ],
   },

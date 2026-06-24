@@ -8,13 +8,17 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
+import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import { createGratitude } from "@/lib/db";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function NewGratitudeScreen() {
+  const { sourceJournalEntryId } = useLocalSearchParams<{
+    sourceJournalEntryId?: string;
+  }>();
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("");
   const [saving, setSaving] = useState(false);
@@ -30,6 +34,7 @@ export default function NewGratitudeScreen() {
       await createGratitude({
         content: content.trim(),
         category: category.trim().length > 0 ? category.trim() : null,
+        journalEntryId: sourceJournalEntryId ?? null,
         syncStatus: "local_only",
       });
       router.replace("/(tabs)/gratitude");
@@ -55,6 +60,13 @@ export default function NewGratitudeScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
+        {sourceJournalEntryId ? (
+          <SourceReflectionLink
+            journalEntryId={sourceJournalEntryId}
+            pressable={false}
+          />
+        ) : null}
+
         <View style={styles.field}>
           <Text style={styles.label}>What are you grateful for?</Text>
           <View style={styles.inputWrapper}>

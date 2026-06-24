@@ -59,3 +59,19 @@ export function localFileExists(uri: string): boolean {
     return false;
   }
 }
+
+/**
+ * Removes the entire local audio directory and every recording inside it.
+ * Used by the "Delete all local data" action. Best-effort: ignores failures so
+ * a missing or already-empty directory does not block clearing the database.
+ */
+export function deleteAllLocalAudio(): void {
+  try {
+    const dir = new Directory(Paths.document, AUDIO_DIRECTORY);
+    if (dir.exists) {
+      dir.delete();
+    }
+  } catch {
+    // Best-effort; ignore failures.
+  }
+}

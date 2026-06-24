@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { GuidedPromptEditor } from "@/components/reflection/GuidedPromptEditor";
 import { AudioPlayback } from "@/components/journal/AudioPlayback";
+import { LinkedFromReflection } from "@/components/journal/LinkedFromReflection";
+import { RememberFromReflection } from "@/components/journal/RememberFromReflection";
 import {
   getAudioAssetByEntryId,
   getJournalEntryById,
@@ -30,19 +32,17 @@ import {
   syncStatusLabel,
 } from "@/lib/journal-display";
 import {
-  buildGuidedTextPayload,
+  buildGuidedTextPayloadPreservingLegacy,
   compileGuidedReflectionFromPayload,
   configForPayload,
+  deriveTitleFromTextPayload,
   parseStructuredPayload,
   payloadToAnswers,
   type GuidedStructuredPayload,
   type GuidedTextPayload,
   type GuidedVoicePayload,
 } from "@/lib/guided-payload";
-import {
-  deriveGuidedTitle,
-  type GuidedAnswers,
-} from "@/lib/reflection-flow";
+import type { GuidedAnswers } from "@/lib/reflection-flow";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error" | "not-found";
@@ -155,10 +155,14 @@ export default function JournalEntryDetailScreen() {
       return;
     }
     const config = configForPayload(payload);
-    const nextPayload = buildGuidedTextPayload(config, answers);
+    const nextPayload = buildGuidedTextPayloadPreservingLegacy(
+      config,
+      answers,
+      payload,
+    );
     const updated = await updateJournalEntry(entry.id, {
       rawText: compileGuidedReflectionFromPayload(nextPayload),
-      title: deriveGuidedTitle(config, answers),
+      title: deriveTitleFromTextPayload(nextPayload, config.fallbackTitle),
       structuredPayloadJson: JSON.stringify(nextPayload),
     });
     if (updated) {
@@ -256,17 +260,6 @@ export default function JournalEntryDetailScreen() {
 
     return (
       <FlowScreen title={entry.title ?? "Voice reflection"} subtitle={metaLine}>
-        {guidedVoicePayload && guidedVoicePayload.prompts.length > 0 ? (
-          <View style={styles.promptsCard}>
-            <Text style={styles.sectionLabel}>Prompts in this reflection</Text>
-            {guidedVoicePayload.prompts.map((prompt) => (
-              <View key={prompt.id} style={styles.promptRow}>
-                <Text style={styles.promptBullet}>·</Text>
-                <Text style={styles.promptText}>{prompt.label}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
         <View style={styles.audioWrapper}>
           {audioAvailable ? (
             <AudioPlayback
@@ -286,9 +279,27 @@ export default function JournalEntryDetailScreen() {
           Audio is stored privately on this device. Transcription isn't
           available yet.
         </Text>
+
+        {guidedVoicePayload && guidedVoicePayload.prompts.length > 0 ? (
+          <View style={styles.promptsCard}>
+            <Text style={styles.sectionLabel}>Prompts in this reflection</Text>
+            {guidedVoicePayload.prompts.map((prompt) => (
+              <View key={prompt.id} style={styles.promptRow}>
+                <Text style={styles.promptBullet}>·</Text>
+                <Text style={styles.promptText}>{prompt.label}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         <Text style={styles.privacyLine}>
           {statusLabel(entry.status)} · {syncStatusLabel(entry.syncStatus)}
         </Text>
+
+        <LinkedFromReflection journalEntryId={entry.id} />
+
+        <RememberFromReflection journalEntryId={entry.id} />
+
         <Button
           label="Delete"
           variant="destructive"
@@ -337,6 +348,11 @@ export default function JournalEntryDetailScreen() {
         <Text style={styles.privacyLine}>
           {statusLabel(entry.status)} · {syncStatusLabel(entry.syncStatus)}
         </Text>
+
+        <LinkedFromReflection journalEntryId={entry.id} />
+
+        <RememberFromReflection journalEntryId={entry.id} />
+
         <Button
           label="Edit"
           onPress={() => setStructuredEditing(true)}
@@ -397,6 +413,11 @@ export default function JournalEntryDetailScreen() {
             <Text style={styles.privacyLine}>
               {statusLabel(entry.status)} · {syncStatusLabel(entry.syncStatus)}
             </Text>
+
+            <LinkedFromReflection journalEntryId={entry.id} />
+
+            <RememberFromReflection journalEntryId={entry.id} />
+
             <Button label="Edit" onPress={startEditing} style={styles.action} />
             <Button
               label="Delete"

@@ -12,19 +12,18 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import type { PrayerRequest } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
+import { DateSelector } from "@/components/ui/DateSelector";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
+import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import {
   archivePrayerRequest,
   getPrayerRequestById,
   markPrayerRequestAnswered,
+  reactivatePrayerRequest,
   softDeletePrayerRequest,
   updatePrayerRequest,
 } from "@/lib/db";
-import {
-  formatPrayerDate,
-  isValidDateOnly,
-  prayerStatusLabel,
-} from "@/lib/prayer-display";
+import { formatPrayerDate, prayerStatusLabel } from "@/lib/prayer-display";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error" | "not-found";
@@ -39,7 +38,7 @@ export default function PrayerRequestDetailScreen() {
 
   const [titleDraft, setTitleDraft] = useState("");
   const [descriptionDraft, setDescriptionDraft] = useState("");
-  const [followUpDraft, setFollowUpDraft] = useState("");
+  const [followUpDraft, setFollowUpDraft] = useState<string | null>(null);
   const [answerDraft, setAnswerDraft] = useState("");
 
   const [saving, setSaving] = useState(false);
@@ -89,7 +88,7 @@ export default function PrayerRequestDetailScreen() {
     }
     setTitleDraft(request.title);
     setDescriptionDraft(request.description ?? "");
-    setFollowUpDraft(request.followUpAt ?? "");
+    setFollowUpDraft(request.followUpAt ?? null);
     setMode("editing");
   }
 
@@ -103,10 +102,7 @@ export default function PrayerRequestDetailScreen() {
   }
 
   const trimmedTitle = titleDraft.trim();
-  const trimmedFollowUp = followUpDraft.trim();
-  const followUpValid =
-    trimmedFollowUp.length === 0 || isValidDateOnly(trimmedFollowUp);
-  const canSaveEdit = trimmedTitle.length > 0 && followUpValid && !saving;
+  const canSaveEdit = trimmedTitle.length > 0 && !saving;
 
   async function handleSaveEdit() {
     if (!request || !canSaveEdit) {
@@ -118,7 +114,7 @@ export default function PrayerRequestDetailScreen() {
         title: trimmedTitle,
         description:
           descriptionDraft.trim().length > 0 ? descriptionDraft.trim() : null,
-        followUpAt: trimmedFollowUp.length > 0 ? trimmedFollowUp : null,
+        followUpAt: followUpDraft,
       });
       if (updated) {
         setRequest(updated);
@@ -204,6 +200,49 @@ export default function PrayerRequestDetailScreen() {
       Alert.alert(
         "Could not archive",
         "This request could not be archived just now. Please try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function confirmReactivate() {
+    if (!request) {
+      return;
+    }
+    const message =
+      request.status === "answered"
+        ? "This will move it back to Active. Any saved answer note will be cleared."
+        : "This will move it back to Active so you can keep praying about it.";
+    Alert.alert("Move back to Active?", message, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Move to Active",
+        onPress: () => {
+          void handleReactivate();
+        },
+      },
+    ]);
+  }
+
+  async function handleReactivate() {
+    if (!request || saving) {
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await reactivatePrayerRequest(request.id);
+      if (updated) {
+        setRequest(updated);
+      }
+    } catch (error: unknown) {
+      console.warn(
+        "Failed to reactivate prayer request:",
+        error instanceof Error ? error.message : "unknown error",
+      );
+      Alert.alert(
+        "Could not update",
+        "This request could not be moved to Active just now. Please try again.",
       );
     } finally {
       setSaving(false);
@@ -317,27 +356,15 @@ export default function PrayerRequestDetailScreen() {
             </View>
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Follow-up date (optional)</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                value={followUpDraft}
-                onChangeText={setFollowUpDraft}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.textSubtle}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="numbers-and-punctuation"
-                style={styles.titleInput}
-                accessibilityLabel="Follow-up date"
-              />
-            </View>
-            {!followUpValid ? (
-              <Text style={styles.errorHint}>
-                Please use the format YYYY-MM-DD, or leave this blank.
-              </Text>
-            ) : null}
-          </View>
+          <DateSelector
+            label="Follow-up date (optional)"
+            value={followUpDraft}
+            onChange={setFollowUpDraft}
+            disablePast
+            allowClear
+            emptyLabel="No follow-up date"
+            hint="Choose when you'd like to revisit this. Today or a future day."
+          />
 
           <Button
             label="Save changes"
@@ -436,6 +463,10 @@ export default function PrayerRequestDetailScreen() {
         </View>
       ) : null}
 
+      {request.sourceJournalEntryId ? (
+        <SourceReflectionLink journalEntryId={request.sourceJournalEntryId} />
+      ) : null}
+
       <Text style={styles.privacyLine}>Private to this device.</Text>
 
       <Button label="Edit" onPress={startEditing} style={styles.action} />
@@ -444,6 +475,15 @@ export default function PrayerRequestDetailScreen() {
           label="Mark as answered"
           variant="secondary"
           onPress={startAnswering}
+          style={styles.action}
+        />
+      ) : null}
+      {request.status !== "active" ? (
+        <Button
+          label="Move back to Active"
+          variant="secondary"
+          onPress={confirmReactivate}
+          disabled={saving}
           style={styles.action}
         />
       ) : null}

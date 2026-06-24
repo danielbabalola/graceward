@@ -88,6 +88,17 @@ export async function getAudioAssetByEntryId(
   return row ? mapRow(row) : null;
 }
 
+/** Non-deleted audio asset metadata for data export (no raw audio bytes). */
+export async function listAudioAssetsForExport(): Promise<AudioAsset[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<AudioAssetRow>(
+    `SELECT * FROM audio_assets
+      WHERE deleted_at IS NULL
+      ORDER BY created_at DESC`,
+  );
+  return rows.map(mapRow);
+}
+
 export async function softDeleteAudioAssetsForEntry(
   journalEntryId: string,
 ): Promise<void> {

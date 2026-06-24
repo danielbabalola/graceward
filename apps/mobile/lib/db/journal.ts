@@ -112,6 +112,17 @@ export async function listJournalEntries(): Promise<JournalEntry[]> {
   return rows.map(mapRow);
 }
 
+export async function getMostRecentJournalEntry(): Promise<JournalEntry | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<JournalEntryRow>(
+    `SELECT * FROM journal_entries
+      WHERE deleted_at IS NULL
+      ORDER BY entry_date DESC, created_at DESC
+      LIMIT 1`,
+  );
+  return row ? mapRow(row) : null;
+}
+
 export async function listJournalEntriesByDate(
   entryDate: string,
 ): Promise<JournalEntry[]> {

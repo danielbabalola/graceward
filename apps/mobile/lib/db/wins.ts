@@ -83,6 +83,34 @@ export async function listRecentWins(limit = 5): Promise<Win[]> {
   return rows.map(mapRow);
 }
 
+export async function listWinsByJournalEntryId(
+  journalEntryId: string,
+): Promise<Win[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<WinRow>(
+    `SELECT * FROM wins
+      WHERE journal_entry_id = ? AND deleted_at IS NULL
+      ORDER BY created_at DESC`,
+    [journalEntryId],
+  );
+  return rows.map(mapRow);
+}
+
+/**
+ * Most recent faithfulness moment. Internally these are stored in the `wins`
+ * table; user-facing language always says "faithfulness moment", never "win".
+ */
+export async function getMostRecentWin(): Promise<Win | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<WinRow>(
+    `SELECT * FROM wins
+      WHERE deleted_at IS NULL
+      ORDER BY created_at DESC
+      LIMIT 1`,
+  );
+  return row ? mapRow(row) : null;
+}
+
 export async function getWinById(id: string): Promise<Win | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<WinRow>(

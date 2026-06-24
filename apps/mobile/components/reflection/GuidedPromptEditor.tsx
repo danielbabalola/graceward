@@ -22,6 +22,12 @@ type GuidedPromptEditorProps = {
   saveLabel: string;
   onSave: (answers: GuidedAnswers) => Promise<void>;
   onCancel?: () => void;
+  /**
+   * Optional handler for save failures. When provided it fully owns surfacing
+   * the error (e.g. the shared calm handler that gives a specific message for
+   * future-dated entries). When omitted, a generic, redacted fallback is shown.
+   */
+  onError?: (error: unknown) => void;
 };
 
 /**
@@ -35,6 +41,7 @@ export function GuidedPromptEditor({
   saveLabel,
   onSave,
   onCancel,
+  onError,
 }: GuidedPromptEditorProps) {
   const [answers, setAnswers] = useState<GuidedAnswers>(initialAnswers ?? {});
   const [index, setIndex] = useState(0);
@@ -67,14 +74,19 @@ export function GuidedPromptEditor({
       await onSave(answers);
       // Parent handles navigation / closing the editor on success.
     } catch (error: unknown) {
-      console.warn(
-        "Failed to save guided reflection:",
-        error instanceof Error ? error.message : "unknown error",
-      );
-      Alert.alert(
-        "Could not save",
-        "Your reflection could not be saved just now. Please try again.",
-      );
+      if (onError) {
+        onError(error);
+      } else {
+        // Redacted, category-only fallback — never logs raw answers.
+        console.warn(
+          "Failed to save guided reflection:",
+          error instanceof Error ? error.message : "unknown error",
+        );
+        Alert.alert(
+          "Could not save",
+          "Your reflection could not be saved just now. Please try again.",
+        );
+      }
       setSaving(false);
     }
   }

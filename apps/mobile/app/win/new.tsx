@@ -8,13 +8,17 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
+import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import { createWin } from "@/lib/db";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function NewWinScreen() {
+  const { sourceJournalEntryId } = useLocalSearchParams<{
+    sourceJournalEntryId?: string;
+  }>();
   const [content, setContent] = useState("");
   const [theme, setTheme] = useState("");
   const [saving, setSaving] = useState(false);
@@ -30,18 +34,19 @@ export default function NewWinScreen() {
       await createWin({
         content: content.trim(),
         faithfulnessTheme: theme.trim().length > 0 ? theme.trim() : null,
+        journalEntryId: sourceJournalEntryId ?? null,
         syncStatus: "local_only",
       });
       router.replace("/(tabs)/gratitude");
     } catch (error: unknown) {
-      // Never log raw win content — only an error category.
+      // Never log raw faithfulness content — only an error category.
       console.warn(
-        "Failed to save win:",
+        "Failed to save faithfulness moment:",
         error instanceof Error ? error.message : "unknown error",
       );
       Alert.alert(
         "Could not save",
-        "Your win could not be saved just now. Please try again.",
+        "This faithfulness moment could not be saved just now. Please try again.",
       );
       setSaving(false);
     }
@@ -49,12 +54,19 @@ export default function NewWinScreen() {
 
   return (
     <FlowScreen
-      title="Add win"
-      subtitle="Notice where you saw God at work — not a scoreboard, just His goodness."
+      title="Add faithfulness moment"
+      subtitle="Notice where you saw God's goodness — His provision, growth, help, or an answered prayer."
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
+        {sourceJournalEntryId ? (
+          <SourceReflectionLink
+            journalEntryId={sourceJournalEntryId}
+            pressable={false}
+          />
+        ) : null}
+
         <View style={styles.field}>
           <Text style={styles.label}>Where did you see God's goodness?</Text>
           <View style={styles.inputWrapper}>
@@ -67,13 +79,13 @@ export default function NewWinScreen() {
               autoFocus
               textAlignVertical="top"
               style={styles.contentInput}
-              accessibilityLabel="Win content"
+              accessibilityLabel="Faithfulness moment"
             />
           </View>
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Theme (optional)</Text>
+          <Text style={styles.label}>Faithfulness theme (optional)</Text>
           <View style={styles.inputWrapper}>
             <TextInput
               value={theme}
@@ -88,7 +100,7 @@ export default function NewWinScreen() {
 
         <Text style={styles.hint}>Saved privately on this device only.</Text>
         <Button
-          label="Save win"
+          label="Save faithfulness moment"
           onPress={handleSave}
           disabled={!canSave}
           loading={saving}

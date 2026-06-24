@@ -5,15 +5,13 @@ import { Button } from "@/components/ui/Button";
 import { Screen } from "@/components/ui/Screen";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { GratitudeList } from "@/components/gratitude/GratitudeList";
-import { WinList } from "@/components/gratitude/WinList";
 import { FaithfulnessView } from "@/components/gratitude/FaithfulnessView";
 import { spacing } from "@/theme/tokens";
 
-type GratitudeTab = "gratitudes" | "wins" | "faithfulness";
+type GratitudeTab = "gratitudes" | "faithfulness";
 
 const tabOptions: { value: GratitudeTab; label: string }[] = [
   { value: "gratitudes", label: "Gratitudes" },
-  { value: "wins", label: "Wins" },
   { value: "faithfulness", label: "Faithfulness" },
 ];
 
@@ -23,7 +21,7 @@ export default function GratitudeScreen() {
   return (
     <Screen
       title="Gratitude"
-      subtitle="Notice mercy, wins, and God's care — one day at a time."
+      subtitle="Notice mercy and remember God's faithfulness — one day at a time."
     >
       {tab === "gratitudes" ? (
         <View style={styles.addButton}>
@@ -33,9 +31,12 @@ export default function GratitudeScreen() {
           />
         </View>
       ) : null}
-      {tab === "wins" ? (
+      {tab === "faithfulness" ? (
         <View style={styles.addButton}>
-          <Button label="Add win" onPress={() => router.push("/win/new")} />
+          <Button
+            label="Add faithfulness moment"
+            onPress={() => router.push("/win/new")}
+          />
         </View>
       ) : null}
 
@@ -44,7 +45,6 @@ export default function GratitudeScreen() {
       </View>
 
       {tab === "gratitudes" ? <GratitudeList /> : null}
-      {tab === "wins" ? <WinList /> : null}
       {tab === "faithfulness" ? <FaithfulnessView /> : null}
     </Screen>
   );

@@ -1,10 +1,14 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Card } from "@/components/ui/Card";
 import { Section } from "@/components/ui/Section";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { guidedModes } from "@/lib/reflection-flow";
+import { entryDateForwardParams } from "@/lib/reflection-date";
 
 export default function GuidedModeScreen() {
+  const { entryDate } = useLocalSearchParams<{ entryDate?: string }>();
+  const forward = entryDateForwardParams(entryDate);
+
   return (
     <FlowScreen
       title="Guided Reflection"
@@ -17,7 +21,10 @@ export default function GuidedModeScreen() {
             title={mode.title}
             description={mode.description}
             onPress={() =>
-              router.push(`/reflection/guided/${mode.id}/input-method`)
+              router.push({
+                pathname: "/reflection/guided/[mode]/input-method",
+                params: { mode: mode.id, ...forward },
+              })
             }
             style={
               mode.accentColor

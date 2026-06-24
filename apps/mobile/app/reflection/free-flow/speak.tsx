@@ -1,17 +1,21 @@
 import { useState } from "react";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { ReflectionDateSelector } from "@/components/reflection/ReflectionDateSelector";
 import {
   VoiceRecorder,
   type VoiceRecording,
 } from "@/components/reflection/VoiceRecorder";
-import { createAudioAsset, createJournalEntry, toLocalDateString } from "@/lib/db";
+import { createAudioAsset, createJournalEntry } from "@/lib/db";
 import { persistRecording } from "@/lib/audio-storage";
+import { resolveInitialEntryDate } from "@/lib/reflection-date";
 
 export default function FreeFlowSpeakScreen() {
+  const { entryDate: entryDateParam } = useLocalSearchParams<{
+    entryDate?: string;
+  }>();
   const [entryDate, setEntryDate] = useState(() =>
-    toLocalDateString(new Date()),
+    resolveInitialEntryDate(entryDateParam),
   );
 
   async function handleSave({ uri, durationSeconds }: VoiceRecording) {

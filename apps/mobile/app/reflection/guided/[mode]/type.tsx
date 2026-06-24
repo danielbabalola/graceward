@@ -3,7 +3,8 @@ import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { GuidedPromptEditor } from "@/components/reflection/GuidedPromptEditor";
 import { ReflectionDateSelector } from "@/components/reflection/ReflectionDateSelector";
-import { createJournalEntry, toLocalDateString } from "@/lib/db";
+import { createJournalEntry } from "@/lib/db";
+import { handleReflectionSaveError } from "@/lib/reflection-save";
 import {
   compileGuidedReflection,
   deriveGuidedTitle,
@@ -11,12 +12,16 @@ import {
   isGuidedMode,
   type GuidedAnswers,
 } from "@/lib/reflection-flow";
+import { resolveInitialEntryDate } from "@/lib/reflection-date";
 import { buildGuidedTextPayload } from "@/lib/guided-payload";
 
 export default function GuidedTypeScreen() {
-  const { mode } = useLocalSearchParams<{ mode: string }>();
+  const { mode, entryDate: entryDateParam } = useLocalSearchParams<{
+    mode: string;
+    entryDate?: string;
+  }>();
   const [entryDate, setEntryDate] = useState(() =>
-    toLocalDateString(new Date()),
+    resolveInitialEntryDate(entryDateParam),
   );
 
   if (!mode || !isGuidedMode(mode)) {
@@ -49,6 +54,7 @@ export default function GuidedTypeScreen() {
         config={config}
         saveLabel="Save reflection"
         onSave={handleSave}
+        onError={handleReflectionSaveError}
       />
     </FlowScreen>
   );

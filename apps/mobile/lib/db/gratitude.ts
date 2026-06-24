@@ -89,6 +89,30 @@ export async function listRecentGratitudes(limit = 5): Promise<Gratitude[]> {
   return rows.map(mapRow);
 }
 
+export async function listGratitudesByJournalEntryId(
+  journalEntryId: string,
+): Promise<Gratitude[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<GratitudeRow>(
+    `SELECT * FROM gratitudes
+      WHERE journal_entry_id = ? AND deleted_at IS NULL
+      ORDER BY created_at DESC`,
+    [journalEntryId],
+  );
+  return rows.map(mapRow);
+}
+
+export async function getMostRecentGratitude(): Promise<Gratitude | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<GratitudeRow>(
+    `SELECT * FROM gratitudes
+      WHERE deleted_at IS NULL
+      ORDER BY created_at DESC
+      LIMIT 1`,
+  );
+  return row ? mapRow(row) : null;
+}
+
 export async function getGratitudeById(
   id: string,
 ): Promise<Gratitude | null> {

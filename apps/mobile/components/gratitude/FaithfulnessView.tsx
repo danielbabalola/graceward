@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import type { PrayerRequest, Win } from "@graceward/shared";
 import { Card } from "@/components/ui/Card";
@@ -8,7 +8,10 @@ import { ItemCard } from "@/components/gratitude/ItemCard";
 import { listRecentWins, listPrayerRequestsByStatus } from "@/lib/db";
 import { contentPreview, winMetaLine } from "@/lib/gratitude-display";
 import { formatPrayerDate } from "@/lib/prayer-display";
-import { colors, spacing } from "@/theme/tokens";
+import { colors, spacing, typography } from "@/theme/tokens";
+
+const EXPLANATION =
+  "Faithfulness gathers answered prayers and moments you want to remember over time.";
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -67,16 +70,21 @@ export function FaithfulnessView() {
 
   if (wins.length === 0 && answered.length === 0) {
     return (
-      <Card
-        variant="subtle"
-        title="Faithfulness grows over time"
-        description="As you record wins and mark prayers answered, this view will gather them into a quiet record of God's care."
-      />
+      <View style={styles.container}>
+        <Text style={styles.explanation}>{EXPLANATION}</Text>
+        <Card
+          variant="subtle"
+          title="Faithfulness grows over time"
+          description="Answered prayers and moments of God's goodness will appear here over time."
+        />
+      </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <Text style={styles.explanation}>{EXPLANATION}</Text>
+
       {answered.length > 0 ? (
         <Section title="Answered prayers">
           {answered.map((request) => (
@@ -102,14 +110,16 @@ export function FaithfulnessView() {
       ) : null}
 
       {wins.length > 0 ? (
-        <Section title="Recent wins">
+        <Section title="Faithfulness moments">
           {wins.map((win) => (
             <ItemCard
               key={win.id}
               meta={winMetaLine(win)}
               content={contentPreview(win.content)}
               accentColor={colors.accentGold}
-              accessibilityLabel={`Open win: ${contentPreview(win.content)}`}
+              accessibilityLabel={`Open faithfulness moment: ${contentPreview(
+                win.content,
+              )}`}
               onPress={() =>
                 router.push({
                   pathname: "/win/[id]",
@@ -131,5 +141,10 @@ const styles = StyleSheet.create({
   },
   container: {
     gap: spacing.sm,
+  },
+  explanation: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+    marginBottom: spacing.xs,
   },
 });

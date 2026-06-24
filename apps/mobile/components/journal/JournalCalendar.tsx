@@ -2,9 +2,11 @@ import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import type { JournalEntry } from "@graceward/shared";
+import { Button } from "@/components/ui/Button";
 import { CalendarMonth } from "@/components/journal/CalendarMonth";
 import { JournalEntryCard } from "@/components/journal/JournalEntryCard";
 import {
+  isFutureLocalDate,
   listJournalEntriesByDate,
   listJournalEntryDatesForMonth,
 } from "@/lib/db";
@@ -77,6 +79,7 @@ export function JournalCalendar() {
         todayDate={todayDate}
         selectedDate={selectedDate}
         markedDates={markedDates}
+        maxDate={todayDate}
         onPrevMonth={() =>
           setMonth((m) => addMonths(m.year, m.monthIndex, -1))
         }
@@ -86,6 +89,19 @@ export function JournalCalendar() {
 
       <View style={styles.daySection}>
         <Text style={styles.dayHeader}>{formatEntryDate(selectedDate)}</Text>
+
+        {isFutureLocalDate(selectedDate, todayDate) ? null : (
+          <Button
+            label="Add reflection for this day"
+            variant="secondary"
+            onPress={() =>
+              router.push({
+                pathname: "/reflection",
+                params: { entryDate: selectedDate },
+              })
+            }
+          />
+        )}
 
         {dayState === "loading" ? (
           <View style={styles.centered}>

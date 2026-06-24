@@ -13,6 +13,7 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import type { Gratitude } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
+import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import {
   getGratitudeById,
   softDeleteGratitude,
@@ -245,6 +246,11 @@ export default function GratitudeDetailScreen() {
       <View style={styles.bodyCard}>
         <Text style={styles.body}>{gratitude.content}</Text>
       </View>
+
+      {gratitude.journalEntryId ? (
+        <SourceReflectionLink journalEntryId={gratitude.journalEntryId} />
+      ) : null}
+
       <Text style={styles.privacyLine}>Private to this device.</Text>
 
       <Button label="Edit" onPress={startEditing} style={styles.action} />

@@ -70,6 +70,34 @@ export function buildGuidedTextPayload(
 }
 
 /**
+ * Builds the next text payload from the current config + answers, then appends
+ * any prompts from the previous payload whose ids are no longer in the current
+ * config. This preserves answers from older prompt sets (e.g. a renamed or
+ * removed prompt) instead of silently discarding them when an older entry is
+ * edited. Legacy prompts keep their originally-saved label so detail still
+ * renders them safely (never as raw JSON).
+ */
+export function buildGuidedTextPayloadPreservingLegacy(
+  config: GuidedModeConfig,
+  answers: GuidedAnswers,
+  previous: GuidedTextPayload,
+): GuidedTextPayload {
+  const base = buildGuidedTextPayload(config, answers);
+  const currentIds = new Set(config.prompts.map((prompt) => prompt.id));
+  const legacyPrompts: GuidedPromptAnswer[] = previous.prompts
+    .filter((prompt) => !currentIds.has(prompt.id))
+    .map((prompt) => ({
+      id: prompt.id,
+      label: prompt.label,
+      // The editor keeps unseen legacy answers in its answer map; fall back to
+      // the previously-saved answer if it was not present for any reason.
+      answer: (answers[prompt.id] ?? prompt.answer).trim(),
+    }));
+
+  return { ...base, prompts: [...base.prompts, ...legacyPrompts] };
+}
+
+/**
  * Builds a versioned voice payload describing the prompts presented and the
  * markers captured while recording one continuous audio file.
  */
@@ -215,6 +243,33 @@ export function compileGuidedReflectionFromPayload(
     })
     .filter((section): section is string => section !== null)
     .join("\n\n");
+}
+
+const MAX_PAYLOAD_TITLE_LENGTH = 60;
+
+/**
+ * Derives a calm title from the first answered prompt in a text payload (in
+ * payload order, which includes preserved legacy prompts), falling back to a
+ * mode-based label. Pure; mirrors the truncation used elsewhere.
+ */
+export function deriveTitleFromTextPayload(
+  payload: GuidedTextPayload,
+  fallbackTitle: string,
+): string {
+  const firstAnswered = payload.prompts.find(
+    (prompt) => prompt.answer.trim().length > 0,
+  );
+  if (!firstAnswered) {
+    return fallbackTitle;
+  }
+  const firstLine = firstAnswered.answer.trim().split("\n")[0]?.trim() ?? "";
+  if (firstLine.length === 0) {
+    return fallbackTitle;
+  }
+  if (firstLine.length <= MAX_PAYLOAD_TITLE_LENGTH) {
+    return firstLine;
+  }
+  return `${firstLine.slice(0, MAX_PAYLOAD_TITLE_LENGTH).trimEnd()}…`;
 }
 
 /** Converts a stored text payload back into editable answers keyed by prompt id. */

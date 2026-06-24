@@ -7,15 +7,20 @@ import {
   inputMethods,
   isGuidedMode,
 } from "@/lib/reflection-flow";
+import { entryDateForwardParams } from "@/lib/reflection-date";
 
 export default function GuidedInputMethodScreen() {
-  const { mode } = useLocalSearchParams<{ mode: string }>();
+  const { mode, entryDate } = useLocalSearchParams<{
+    mode: string;
+    entryDate?: string;
+  }>();
 
   if (!mode || !isGuidedMode(mode)) {
     return <Redirect href="/reflection/guided/mode" />;
   }
 
   const modeLabel = guidedModeLabels[mode];
+  const forward = entryDateForwardParams(entryDate);
 
   return (
     <FlowScreen
@@ -30,7 +35,10 @@ export default function GuidedInputMethodScreen() {
             title={method.title}
             description={method.description}
             onPress={() =>
-              router.push(`/reflection/guided/${mode}/${method.id}`)
+              router.push({
+                pathname: `/reflection/guided/[mode]/${method.id}`,
+                params: { mode, ...forward },
+              })
             }
           />
         ))}

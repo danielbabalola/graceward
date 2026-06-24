@@ -13,6 +13,7 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import type { Win } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
+import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import { getWinById, softDeleteWin, updateWin } from "@/lib/db";
 import { formatItemDate } from "@/lib/gratitude-display";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
@@ -111,16 +112,20 @@ export default function WinDetailScreen() {
     if (!win) {
       return;
     }
-    Alert.alert("Delete this win?", "It will be removed from your device.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          void handleDelete();
+    Alert.alert(
+      "Delete this faithfulness moment?",
+      "It will be removed from your device.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void handleDelete();
+          },
         },
-      },
-    ]);
+      ],
+    );
   }
 
   async function handleDelete() {
@@ -138,7 +143,7 @@ export default function WinDetailScreen() {
       );
       Alert.alert(
         "Could not delete",
-        "This win could not be removed just now. Please try again.",
+        "This faithfulness moment could not be removed just now. Please try again.",
       );
       setDeleting(false);
     }
@@ -146,7 +151,7 @@ export default function WinDetailScreen() {
 
   if (loadState === "loading") {
     return (
-      <FlowScreen title="Win">
+      <FlowScreen title="Faithfulness moment">
         <View style={styles.centered}>
           <ActivityIndicator color={colors.primaryDeep} />
         </View>
@@ -156,9 +161,10 @@ export default function WinDetailScreen() {
 
   if (loadState === "error") {
     return (
-      <FlowScreen title="Win">
+      <FlowScreen title="Faithfulness moment">
         <Text style={styles.stateText}>
-          This win could not be loaded. Please try again in a moment.
+          This faithfulness moment could not be loaded. Please try again in a
+          moment.
         </Text>
       </FlowScreen>
     );
@@ -166,15 +172,17 @@ export default function WinDetailScreen() {
 
   if (loadState === "not-found" || !win) {
     return (
-      <FlowScreen title="Win">
-        <Text style={styles.stateText}>This win is no longer available.</Text>
+      <FlowScreen title="Faithfulness moment">
+        <Text style={styles.stateText}>
+          This faithfulness moment is no longer available.
+        </Text>
       </FlowScreen>
     );
   }
 
   if (editing) {
     return (
-      <FlowScreen title="Edit win">
+      <FlowScreen title="Edit faithfulness moment">
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
@@ -189,13 +197,13 @@ export default function WinDetailScreen() {
                 multiline
                 textAlignVertical="top"
                 style={styles.contentInput}
-                accessibilityLabel="Win content"
+                accessibilityLabel="Faithfulness moment"
               />
             </View>
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Theme (optional)</Text>
+            <Text style={styles.label}>Faithfulness theme (optional)</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 value={themeDraft}
@@ -232,10 +240,15 @@ export default function WinDetailScreen() {
     : formatItemDate(win.createdAt);
 
   return (
-    <FlowScreen title="Win" subtitle={metaLine}>
+    <FlowScreen title="Faithfulness moment" subtitle={metaLine}>
       <View style={styles.bodyCard}>
         <Text style={styles.body}>{win.content}</Text>
       </View>
+
+      {win.journalEntryId ? (
+        <SourceReflectionLink journalEntryId={win.journalEntryId} />
+      ) : null}
+
       <Text style={styles.privacyLine}>Private to this device.</Text>
 
       <Button label="Edit" onPress={startEditing} style={styles.action} />

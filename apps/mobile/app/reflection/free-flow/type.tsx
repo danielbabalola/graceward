@@ -7,18 +7,22 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { ReflectionDateSelector } from "@/components/reflection/ReflectionDateSelector";
-import { createJournalEntry, toLocalDateString } from "@/lib/db";
+import { createJournalEntry } from "@/lib/db";
 import { handleReflectionSaveError } from "@/lib/reflection-save";
+import { resolveInitialEntryDate } from "@/lib/reflection-date";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function FreeFlowTypeScreen() {
+  const { entryDate: entryDateParam } = useLocalSearchParams<{
+    entryDate?: string;
+  }>();
   const [text, setText] = useState("");
   const [entryDate, setEntryDate] = useState(() =>
-    toLocalDateString(new Date()),
+    resolveInitialEntryDate(entryDateParam),
   );
   const [saving, setSaving] = useState(false);
 

@@ -6,8 +6,9 @@ import {
   type GuidedVoiceRecording,
 } from "@/components/reflection/GuidedVoiceRecorder";
 import { ReflectionDateSelector } from "@/components/reflection/ReflectionDateSelector";
-import { createAudioAsset, createJournalEntry, toLocalDateString } from "@/lib/db";
+import { createAudioAsset, createJournalEntry } from "@/lib/db";
 import { persistRecording } from "@/lib/audio-storage";
+import { resolveInitialEntryDate } from "@/lib/reflection-date";
 import { buildGuidedVoicePayload } from "@/lib/guided-payload";
 import {
   guidedModeConfigs,
@@ -25,9 +26,12 @@ const speakIntros: Record<GuidedMode, string> = {
 };
 
 export default function GuidedSpeakScreen() {
-  const { mode } = useLocalSearchParams<{ mode: string }>();
+  const { mode, entryDate: entryDateParam } = useLocalSearchParams<{
+    mode: string;
+    entryDate?: string;
+  }>();
   const [entryDate, setEntryDate] = useState(() =>
-    toLocalDateString(new Date()),
+    resolveInitialEntryDate(entryDateParam),
   );
 
   if (!mode || !isGuidedMode(mode)) {
