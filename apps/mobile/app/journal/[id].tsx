@@ -10,14 +10,17 @@ import {
   View,
 } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import type { JournalEntry } from "@graceward/shared";
+import type { AudioAsset, JournalEntry } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
+import { AudioPlayback } from "@/components/journal/AudioPlayback";
 import {
+  getAudioAssetByEntryId,
   getJournalEntryById,
   softDeleteJournalEntry,
   updateJournalEntry,
 } from "@/lib/db";
+import { localFileExists } from "@/lib/audio-storage";
 import {
   formatEntryDate,
   inputTypeLabel,
@@ -33,6 +36,7 @@ export default function JournalEntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [entry, setEntry] = useState<JournalEntry | null>(null);
+  const [audioAsset, setAudioAsset] = useState<AudioAsset | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
 
   const [editing, setEditing] = useState(false);
@@ -48,8 +52,10 @@ export default function JournalEntryDetailScreen() {
         return;
       }
       setLoadState((prev) => (prev === "ready" ? prev : "loading"));
-      getJournalEntryById(id)
-        .then((result) => {
+
+      (async () => {
+        try {
+          const result = await getJournalEntryById(id);
           if (!active) {
             return;
           }
@@ -58,9 +64,16 @@ export default function JournalEntryDetailScreen() {
             return;
           }
           setEntry(result);
-          setLoadState("ready");
-        })
-        .catch((error: unknown) => {
+          if (result.inputType === "voice") {
+            const asset = await getAudioAssetByEntryId(result.id);
+            if (active) {
+              setAudioAsset(asset);
+            }
+          }
+          if (active) {
+            setLoadState("ready");
+          }
+        } catch (error: unknown) {
           if (active) {
             setLoadState("error");
           }
@@ -68,7 +81,9 @@ export default function JournalEntryDetailScreen() {
             "Failed to load reflection:",
             error instanceof Error ? error.message : "unknown error",
           );
-        });
+        }
+      })();
+
       return () => {
         active = false;
       };
@@ -191,6 +206,45 @@ export default function JournalEntryDetailScreen() {
     entry.mode,
   )} · ${inputTypeLabel(entry.inputType)}`;
 
+  if (entry.inputType === "voice") {
+    const audioAvailable =
+      audioAsset !== null && localFileExists(audioAsset.localFilePath);
+
+    return (
+      <FlowScreen title={entry.title ?? "Voice reflection"} subtitle={metaLine}>
+        <View style={styles.audioWrapper}>
+          {audioAvailable ? (
+            <AudioPlayback
+              key={audioAsset.localFilePath}
+              uri={audioAsset.localFilePath}
+              fallbackDurationSeconds={audioAsset.durationSeconds}
+            />
+          ) : (
+            <View style={styles.bodyCard}>
+              <Text style={styles.body}>
+                This audio is no longer available on this device.
+              </Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.privacyLine}>
+          Audio is stored privately on this device. Transcription isn't
+          available yet.
+        </Text>
+        <Text style={styles.privacyLine}>
+          {statusLabel(entry.status)} · {syncStatusLabel(entry.syncStatus)}
+        </Text>
+        <Button
+          label="Delete"
+          variant="destructive"
+          onPress={confirmDelete}
+          loading={deleting}
+          style={styles.action}
+        />
+      </FlowScreen>
+    );
+  }
+
   return (
     <FlowScreen title={entry.title ?? "Reflection"} subtitle={metaLine}>
       <KeyboardAvoidingView
@@ -294,5 +348,8 @@ const styles = StyleSheet.create({
   },
   action: {
     marginBottom: spacing.sm,
+  },
+  audioWrapper: {
+    marginBottom: spacing.md,
   },
 });

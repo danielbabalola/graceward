@@ -55,9 +55,46 @@ export type CreateJournalEntryInput = {
   reflectionPath: ReflectionPath;
   mode: JournalMode;
   inputType: JournalInputType;
-  rawText: string;
+  rawText?: string | null;
   title?: string | null;
   entryDate?: string;
   status?: JournalStatus;
+  syncStatus?: SyncStatus;
+};
+
+export type TranscriptionStatus =
+  | "none"
+  | "pending"
+  | "processing"
+  | "complete"
+  | "failed";
+
+export type RetentionPolicy =
+  | "delete_after_transcription"
+  | "keep_device_only"
+  | "encrypted_cloud_backup";
+
+export type AudioAsset = {
+  id: string;
+  journalEntryId: string;
+  localFilePath: string;
+  durationSeconds: number | null;
+  fileSizeBytes: number | null;
+  mimeType: string | null;
+  transcriptionStatus: TranscriptionStatus;
+  retentionPolicy: RetentionPolicy;
+  syncStatus: SyncStatus;
+  createdAt: string;
+  deletedAt: string | null;
+};
+
+export type CreateAudioAssetInput = {
+  journalEntryId: string;
+  localFilePath: string;
+  durationSeconds?: number | null;
+  fileSizeBytes?: number | null;
+  mimeType?: string | null;
+  transcriptionStatus?: TranscriptionStatus;
+  retentionPolicy?: RetentionPolicy;
   syncStatus?: SyncStatus;
 };

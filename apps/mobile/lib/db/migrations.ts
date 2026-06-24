@@ -35,6 +35,30 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 2,
+    up: async (db) => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS audio_assets (
+          id TEXT PRIMARY KEY NOT NULL,
+          journal_entry_id TEXT NOT NULL,
+          local_file_path TEXT NOT NULL,
+          duration_seconds INTEGER,
+          file_size_bytes INTEGER,
+          mime_type TEXT,
+          transcription_status TEXT NOT NULL,
+          retention_policy TEXT NOT NULL,
+          sync_status TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          deleted_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_audio_assets_journal_entry_id
+          ON audio_assets (journal_entry_id);
+        CREATE INDEX IF NOT EXISTS idx_audio_assets_transcription_status
+          ON audio_assets (transcription_status);
+      `);
+    },
+  },
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {

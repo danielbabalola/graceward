@@ -5,6 +5,7 @@ import type {
 } from "@graceward/shared";
 import { getDatabase } from "./client";
 import { deriveTitle, toLocalDateString } from "./helpers";
+import { softDeleteAudioAssetsForEntry } from "./audio";
 
 type JournalEntryRow = {
   id: string;
@@ -45,14 +46,18 @@ export async function createJournalEntry(
   const now = new Date();
   const nowIso = now.toISOString();
 
+  const rawText = input.rawText ?? null;
+  const derivedTitle =
+    input.title ?? (rawText ? deriveTitle(rawText) : null);
+
   const entry: JournalEntry = {
     id: Crypto.randomUUID(),
     entryDate: input.entryDate ?? toLocalDateString(now),
     reflectionPath: input.reflectionPath,
     mode: input.mode,
     inputType: input.inputType,
-    rawText: input.rawText,
-    title: input.title ?? deriveTitle(input.rawText),
+    rawText,
+    title: derivedTitle,
     status: input.status ?? "saved",
     syncStatus: input.syncStatus ?? "local_only",
     createdAt: nowIso,
@@ -167,4 +172,6 @@ export async function softDeleteJournalEntry(id: string): Promise<void> {
       WHERE id = ? AND deleted_at IS NULL`,
     [nowIso, nowIso, id],
   );
+
+  await softDeleteAudioAssetsForEntry(id);
 }

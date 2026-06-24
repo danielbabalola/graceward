@@ -58,6 +58,13 @@ export function syncStatusLabel(syncStatus: SyncStatus): string {
   return syncStatusLabels[syncStatus] ?? syncStatus;
 }
 
+export function formatDuration(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 export function formatEntryDate(entryDate: string): string {
   const parsed = new Date(`${entryDate}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) {

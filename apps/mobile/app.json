@@ -13,7 +13,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Graceward to use the microphone so you can record voice reflections. Audio stays private on your device."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

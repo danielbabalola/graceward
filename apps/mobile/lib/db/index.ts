@@ -10,4 +10,9 @@ export {
   softDeleteJournalEntry,
 } from "./journal";
 export type { UpdateJournalEntryInput } from "./journal";
+export {
+  createAudioAsset,
+  getAudioAssetByEntryId,
+  softDeleteAudioAssetsForEntry,
+} from "./audio";
 export { deriveTitle, toLocalDateString } from "./helpers";
