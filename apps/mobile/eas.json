@@ -17,7 +17,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-STAGING-API.example.com"
+        "EXPO_PUBLIC_API_URL": "https://gracewardapi-production.up.railway.app"
       }
     },
     "production": {
