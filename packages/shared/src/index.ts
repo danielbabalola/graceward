@@ -98,3 +98,35 @@ export type CreateAudioAssetInput = {
   retentionPolicy?: RetentionPolicy;
   syncStatus?: SyncStatus;
 };
+
+export type PrayerRequestStatus = "active" | "answered" | "archived";
+
+export type PrayerRequest = {
+  id: string;
+  title: string;
+  description: string | null;
+  sourceJournalEntryId: string | null;
+  status: PrayerRequestStatus;
+  followUpAt: string | null;
+  answeredAt: string | null;
+  answerDescription: string | null;
+  syncStatus: SyncStatus;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+export type CreatePrayerRequestInput = {
+  title: string;
+  description?: string | null;
+  sourceJournalEntryId?: string | null;
+  followUpAt?: string | null;
+  status?: PrayerRequestStatus;
+  syncStatus?: SyncStatus;
+};
+
+export type UpdatePrayerRequestInput = {
+  title?: string;
+  description?: string | null;
+  followUpAt?: string | null;
+};

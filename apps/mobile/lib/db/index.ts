@@ -15,4 +15,14 @@ export {
   getAudioAssetByEntryId,
   softDeleteAudioAssetsForEntry,
 } from "./audio";
+export {
+  createPrayerRequest,
+  listPrayerRequests,
+  listPrayerRequestsByStatus,
+  getPrayerRequestById,
+  updatePrayerRequest,
+  markPrayerRequestAnswered,
+  archivePrayerRequest,
+  softDeletePrayerRequest,
+} from "./prayer";
 export { deriveTitle, toLocalDateString } from "./helpers";

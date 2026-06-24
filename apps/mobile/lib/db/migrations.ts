@@ -59,6 +59,33 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 3,
+    up: async (db) => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS prayer_requests (
+          id TEXT PRIMARY KEY NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT,
+          source_journal_entry_id TEXT,
+          status TEXT NOT NULL,
+          follow_up_at TEXT,
+          answered_at TEXT,
+          answer_description TEXT,
+          sync_status TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          deleted_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_prayer_requests_status
+          ON prayer_requests (status);
+        CREATE INDEX IF NOT EXISTS idx_prayer_requests_follow_up_at
+          ON prayer_requests (follow_up_at);
+        CREATE INDEX IF NOT EXISTS idx_prayer_requests_source_journal_entry_id
+          ON prayer_requests (source_journal_entry_id);
+      `);
+    },
+  },
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
