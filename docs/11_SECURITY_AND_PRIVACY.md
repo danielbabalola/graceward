@@ -1,5 +1,35 @@
 # 11 Security and Privacy
 
+## MVP Privacy Readiness Note (Draft — not final policy)
+
+This is a working checklist describing how the current MVP actually handles
+data. It is a draft to inform the App Store privacy labels and a future privacy
+policy. It is **not** finished legal text and must be reviewed before launch.
+
+- **Most data stays local to the device.** Journal entries, prayer requests,
+  gratitude, faithfulness moments, saved AI suggestions, audio, and preferences
+  live in on-device SQLite and the app's local storage. There is no account,
+  cloud sync, or analytics in the MVP.
+- **User-initiated AI reflection sends selected text to Graceward's AI service.**
+  Only when the user explicitly taps through and consents, the chosen reflection
+  text is sent to the Graceward API, which calls the AI provider server-side.
+  Nothing is sent in the background or automatically.
+- **Voice recordings are local and not transcribed yet.** Audio is recorded and
+  played back on-device only. There is no transcription pipeline, so voice
+  entries are not sent anywhere and cannot be AI-analyzed in the MVP.
+- **Export excludes raw audio files.** "Export my data" produces a JSON snapshot
+  of local content plus audio *metadata only* — no raw audio bytes, and AI
+  suggestion entries are metadata only. The OS share sheet keeps sharing under
+  the user's control.
+- **Delete local data clears local content, audio, and preferences.** "Delete"
+  permanently removes all local content rows and on-device audio files and
+  resets preferences (including the AI consent acknowledgement). It cannot be
+  undone.
+
+To verify against the labels: review App Store data categories as User Content
+and Audio Data; the MVP collects no Identifiers, Usage, or Diagnostics data.
+Do not overclaim privacy and do not present this draft as a final policy.
+
 ## Security Principle
 
 Security is a product feature.

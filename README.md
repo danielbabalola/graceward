@@ -144,6 +144,8 @@ See the `docs/` folder:
 - `17_APP_STORE_CHECKLIST.md`
 - `18_ROADMAP.md`
 - `19_CURSOR_BUILD_INSTRUCTIONS.md`
+- `20_PRE_RELEASE_CHECKLIST.md`
+- `21_PRIVACY_POLICY_DRAFT.md`
 
 ## Initial Build Order
 
