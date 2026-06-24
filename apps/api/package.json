@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --ignore '**/node_modules/**' src/index.ts",
-    "start": "node dist/index.js",
+    "start": "tsx src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
@@ -13,12 +13,12 @@
     "@graceward/ai-schemas": "workspace:*",
     "@graceward/shared": "workspace:*",
     "fastify": "^5.2.1",
+    "tsx": "^4.19.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@graceward/config": "workspace:*",
     "@types/node": "^22.13.10",
-    "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }
 }

@@ -43,6 +43,61 @@ They take precedence over the aspirational sections below where they differ.
   - A persistent, shared rate limiter (e.g. Redis) or an API gateway so limits
     survive restarts and coordinate across instances.
 
+### Deploying the API for a preview / TestFlight build
+
+Platform-neutral steps. Examples below mention Railway / Render / Fly.io only as
+options — any Node host works. No secrets or deployed URLs are committed.
+
+1. **Deploy the API first.** The mobile preview build points at a deployed HTTPS
+   URL, so the API must be live before the build is useful.
+2. **Set server-side env vars** on the host (never in the mobile app):
+   - `OPENAI_API_KEY` (required; without it the endpoint returns
+     `AI_NOT_CONFIGURED`).
+   - `OPENAI_MODEL` (optional; defaults to `gpt-5.4-mini`).
+   - `AI_PROVIDER_TIMEOUT_MS`, `AI_RATE_LIMIT_MAX`,
+     `AI_RATE_LIMIT_WINDOW_SECONDS` (optional; sensible defaults).
+   - `HOST` and `PORT`: the server binds to `process.env.HOST ?? "0.0.0.0"` and
+     `process.env.PORT ?? 3000`. Most hosts inject `PORT` automatically — do not
+     hardcode it. `NODE_ENV=production` enables a startup safety warning.
+3. **Run command.** Install deps and start:
+   ```bash
+   pnpm install --frozen-lockfile
+   pnpm --filter @graceward/api start   # runs: tsx src/index.ts
+   ```
+   The API starts via `tsx` (a runtime dependency), not `node dist`, because the
+   shared workspace packages (`@graceward/shared`, `@graceward/ai-schemas`)
+   export TypeScript source. Running plain `node dist/index.js` only works on
+   Node versions with type-stripping and is not relied on for deploys.
+4. **Verify `/health`:**
+   ```bash
+   curl -s https://YOUR-API-HOST/health
+   # -> {"status":"ok","service":"api"}
+   ```
+5. **Verify `/ai/analyze-reflection`** with safe dummy text (this makes a real,
+   billable provider call when a key is set):
+   ```bash
+   curl -s -X POST https://YOUR-API-HOST/ai/analyze-reflection \
+     -H 'Content-Type: application/json' \
+     -d '{"journalEntryId":"smoke-1","entryDate":"2026-01-01","mode":"free_flow","inputType":"text","rawText":"Thank you for today. Please help me rest well tonight."}'
+   ```
+   A `200` with structured JSON means the full path works. `AI_NOT_CONFIGURED`
+   means the key is missing; `RATE_LIMITED` means the limiter tripped.
+6. **Point the mobile preview build at the deployed URL.** Set
+   `EXPO_PUBLIC_API_URL` in the `preview` profile of `apps/mobile/eas.json` to
+   the HTTPS API URL. `EXPO_PUBLIC_*` values are bundled into the app, so only
+   the public API base URL belongs there — never the OpenAI key.
+7. **Run the preview build** (requires Expo login; not run as part of this repo
+   work):
+   ```bash
+   cd apps/mobile && eas build --platform ios --profile preview
+   ```
+
+**Deployment caveat — rate limiting behind a proxy:** the in-memory limiter keys
+on `request.ip`. Behind a load balancer/proxy (typical on PaaS) Fastify reports
+the proxy's address unless `trustProxy` is configured, so per-client limiting
+degrades. This reinforces that the current limiter is for MVP/closed testing
+only; see the abuse-control plan above before public launch.
+
 ## Environments
 
 Use:
