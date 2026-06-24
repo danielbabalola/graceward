@@ -38,6 +38,24 @@ There is **no account, no sign-in, no cloud sync, and no analytics** in this
 version. We do not maintain a server-side copy of your reflections, prayers,
 gratitudes, faithfulness moments, lessons, or audio.
 
+## Anonymous install ID for AI features (closed beta)
+
+- To keep the AI features available and affordable during the closed beta —
+  without adding accounts — the app creates a **random anonymous ID** (a UUID)
+  the first time you use an AI action and stores it on your device.
+- This ID is sent **only with AI requests** (as the `X-Graceward-Install-Id`
+  header) so our service can apply fair per-install daily limits and protect the
+  features from abuse and runaway cost.
+- It is **not an account**, requires **no sign-in**, and is **not derived from
+  your phone's hardware, advertising ID, or any other device identifier**. We do
+  **not** use it for analytics, advertising, or tracking, and it is never sent
+  with non-AI activity.
+- Our servers log only a short fingerprint of this ID (never the full value) and
+  never your reflection, prayer, audio, or transcript content.
+- Deleting your local data clears this ID; a new one is generated the next time
+  you use an AI action.
+- This is a closed-beta protection measure, not a final sign-in system.
+
 ## AI reflection (user-initiated)
 
 - AI reflection is **manual**. It runs only when you explicitly choose it and
@@ -100,7 +118,8 @@ gratitudes, faithfulness moments, lessons, or audio.
 - Deleting permanently removes your local content (including any saved
   transcripts, which live within your journal text), your on-device audio files,
   and your app preferences (including the AI reflection, voice transcription, and
-  voice-entry consent acknowledgements). This cannot be undone.
+  voice-entry consent acknowledgements, and the anonymous AI install ID). This
+  cannot be undone.
 - Because there is no account or cloud copy, deleting on-device data removes it.
 
 ## Third parties
@@ -111,7 +130,9 @@ gratitudes, faithfulness moments, lessons, or audio.
   recordings you speak to create an entry. Their handling of that text and audio
   is governed by their terms; confirm and disclose their data handling/retention
   before public launch.
-- No advertising, tracking, or analytics SDKs are used in this version.
+- No advertising, tracking, or analytics SDKs are used in this version. The
+  anonymous install ID described above is used only to protect the AI features
+  (abuse/cost control), not for analytics or tracking.
 
 ## Children's privacy
 

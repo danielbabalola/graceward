@@ -12,13 +12,22 @@ const validBody = {
   rawText: "Today I felt grateful and a little tired.",
 };
 
+// A valid (UUID-shaped) anonymous install ID and its header. Required now that
+// the AI endpoints enforce closed-beta access control.
+const INSTALL_ID = "11111111-1111-4111-8111-111111111111";
+const INSTALL_HEADERS = { "x-graceward-install-id": INSTALL_ID };
+
 // Env that influences route behavior. Snapshotted/cleared per test so the
-// limiter and provider config start from a known, key-free state — tests never
-// require (or use) a real OPENAI_API_KEY, so no live provider call can happen.
+// limiter, quota, and provider config start from a known, key-free state —
+// tests never require (or use) a real OPENAI_API_KEY, so no live provider call
+// can happen.
 const ENV_KEYS = [
   "OPENAI_API_KEY",
   "AI_RATE_LIMIT_MAX",
   "AI_RATE_LIMIT_WINDOW_SECONDS",
+  "AI_ENDPOINTS_ENABLED",
+  "AI_DAILY_TOTAL_QUOTA_PER_INSTALL",
+  "AI_DAILY_ANALYZE_QUOTA_PER_INSTALL",
 ] as const;
 
 let savedEnv: Record<string, string | undefined>;
@@ -58,6 +67,7 @@ describe("POST /ai/analyze-reflection", () => {
       const res = await app.inject({
         method: "POST",
         url: URL,
+        headers: INSTALL_HEADERS,
         payload: { mode: "free_flow" },
       });
       expect(res.statusCode).toBe(400);
@@ -70,7 +80,12 @@ describe("POST /ai/analyze-reflection", () => {
 
   it("returns AI_NOT_CONFIGURED when no API key is set", async () => {
     await withApp(async (app) => {
-      const res = await app.inject({ method: "POST", url: URL, payload: validBody });
+      const res = await app.inject({
+        method: "POST",
+        url: URL,
+        headers: INSTALL_HEADERS,
+        payload: validBody,
+      });
       expect(res.statusCode).toBe(503);
       const body = res.json();
       expect(body.error.code).toBe("AI_NOT_CONFIGURED");
@@ -83,11 +98,21 @@ describe("POST /ai/analyze-reflection", () => {
     process.env.AI_RATE_LIMIT_MAX = "1";
     process.env.AI_RATE_LIMIT_WINDOW_SECONDS = "60";
     await withApp(async (app) => {
-      const first = await app.inject({ method: "POST", url: URL, payload: validBody });
+      const first = await app.inject({
+        method: "POST",
+        url: URL,
+        headers: INSTALL_HEADERS,
+        payload: validBody,
+      });
       // First request is allowed through (503 here, since no key is configured).
       expect(first.statusCode).not.toBe(429);
 
-      const second = await app.inject({ method: "POST", url: URL, payload: validBody });
+      const second = await app.inject({
+        method: "POST",
+        url: URL,
+        headers: INSTALL_HEADERS,
+        payload: validBody,
+      });
       expect(second.statusCode).toBe(429);
       const body = second.json();
       expect(body.error.code).toBe("RATE_LIMITED");
@@ -102,6 +127,7 @@ describe("POST /ai/analyze-reflection", () => {
       const res = await app.inject({
         method: "POST",
         url: URL,
+        headers: INSTALL_HEADERS,
         payload: { ...validBody, rawText: `please keep ${marker} private` },
       });
       expect(res.statusCode).toBe(503);

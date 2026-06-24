@@ -5,10 +5,22 @@ import type { HealthResponse } from "@graceward/shared";
 import { registerAnalyzeReflectionRoute } from "./routes/analyze-reflection.js";
 import { registerTranscribeReflectionRoute } from "./routes/transcribe-reflection.js";
 import { registerStructureVoiceEntryRoute } from "./routes/structure-voice-entry.js";
+import { createQuotaService, resolveQuotaConfig } from "./ai/quota.js";
+import {
+  createInMemoryQuotaStore,
+  type QuotaStore,
+} from "./ai/quota-store.js";
 
 export type BuildAppOptions = {
   /** Fastify logger config. Defaults to enabled; tests pass `false`. */
   logger?: FastifyServerOptions["logger"];
+  /**
+   * Persistent quota store backing per-install AI quotas. Defaults to an
+   * in-memory store so buildApp stays side-effect-free (no file I/O) — the
+   * entrypoint (index.ts) injects a file-backed store for real runs, and tests
+   * may inject a pre-seeded in-memory store.
+   */
+  quotaStore?: QuotaStore;
 };
 
 /**
@@ -43,9 +55,15 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     };
   });
 
-  registerAnalyzeReflectionRoute(app);
-  registerTranscribeReflectionRoute(app);
-  registerStructureVoiceEntryRoute(app);
+  // Per-install daily AI quota (closed-beta cost/abuse control). Shared across
+  // all three AI routes so the combined total cap is honored. The store is the
+  // only stateful dependency; everything else (config, clock) is derived here.
+  const quotaStore = options.quotaStore ?? createInMemoryQuotaStore();
+  const quota = createQuotaService(quotaStore, resolveQuotaConfig());
+
+  registerAnalyzeReflectionRoute(app, quota);
+  registerTranscribeReflectionRoute(app, quota);
+  registerStructureVoiceEntryRoute(app, quota);
 
   return app;
 }

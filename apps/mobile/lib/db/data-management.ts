@@ -102,11 +102,12 @@ export async function listAllForExport(): Promise<LocalDataExport> {
  * Permanently clears all local user data: every row in the local content tables
  * plus the on-device audio files. Device-local preferences are also reset (the
  * entire app_preferences table is cleared, including the AI reflection, voice
- * transcription, and voice-entry consent acknowledgements) so the app feels
- * fresh after a delete — each privacy notice will show again the next time that
- * action is used. The schema and migration version are left intact, so the app
- * keeps working with empty states. This is a true delete (not a soft delete)
- * and cannot be undone.
+ * transcription, and voice-entry consent acknowledgements, and the anonymous AI
+ * install ID) so the app feels fresh after a delete — each privacy notice will
+ * show again the next time that action is used, and a new install ID is
+ * generated on the next AI action. The schema and migration version are left
+ * intact, so the app keeps working with empty states. This is a true delete
+ * (not a soft delete) and cannot be undone.
  */
 export async function deleteAllLocalData(): Promise<void> {
   const db = await getDatabase();

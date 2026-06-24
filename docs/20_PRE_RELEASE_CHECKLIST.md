@@ -59,6 +59,32 @@ cutting a build.
 - [ ] Prayer follow-up date: spoken time ("by next Monday") fills the follow-up;
       no spoken time leaves it blank; a past/garbage date is never set.
 
+## Closed beta: AI access control (install ID + quotas + kill switch)
+
+- [ ] Install ID is sent: AI requests include the `X-Graceward-Install-Id`
+      header; non-AI activity does **not** send it. The same ID persists across
+      AI actions (it's reused, not regenerated each call).
+- [ ] Install ID is anonymous: it is a random UUID, not a login, and not derived
+      from any device/advertising identifier. Server logs show only a short
+      fingerprint, never the full ID, and never request content.
+- [ ] Delete clears the install ID: after **Delete all local data**, the next AI
+      action generates a fresh install ID.
+- [ ] Missing/invalid install ID: a request without a valid header returns
+      `401 INSTALL_ID_REQUIRED` and the app shows the calm "couldn't verify this
+      app" message (no provider/billable call happens).
+- [ ] Per-install quota: after the daily cap (`AI_DAILY_*_QUOTA_PER_INSTALL`),
+      requests return `429 AI_QUOTA_EXCEEDED` and the app shows "You've reached
+      today's AI limit for this beta. Try again tomorrow." Counts reset the next
+      UTC day. Failed/invalid requests are **not** counted.
+- [ ] Kill switch: with `AI_ENDPOINTS_ENABLED=false`, all three AI endpoints
+      return `503 AI_DISABLED` before any provider call, and the app shows
+      "Graceward's AI features are temporarily unavailable." Existing consent
+      behavior is unchanged.
+- [ ] IP rate limiting still applies alongside per-install quotas (burst abuse
+      still returns `429 RATE_LIMITED`).
+- [ ] Quota store path: `AI_QUOTA_STORE_PATH` points at a persistent, writable
+      location so per-install quotas survive an API restart.
+
 ## Closed beta: Help & Feedback (Settings)
 
 - [ ] Test the feedback flow: **Settings → Help & Feedback → Send feedback** and
@@ -150,10 +176,14 @@ cd apps/mobile && eas build --platform ios --profile preview
 
 ## Known blockers before public launch
 
-- [ ] AI endpoint still has in-memory rate limiting only and no auth/user
-      identity — add a real abuse-control plan (see `docs/14_DEPLOYMENT.md`)
-      before opening the API publicly. Keep production builds private (closed
-      beta / TestFlight) until then.
+- [ ] AI endpoints have **closed-beta** access control only — per-IP rate
+      limiting, an anonymous per-install ID, per-install daily quotas, and a kill
+      switch — but **no real auth, user accounts, subscriptions, or
+      entitlements**. Add a real abuse-control / identity plan (see
+      `docs/14_DEPLOYMENT.md`) before opening the API publicly. The file-backed
+      quota store is single-instance; move it to a shared backend (Redis/Postgres)
+      before scaling out. Keep production builds private (closed beta /
+      TestFlight) until then.
 - [ ] Final brand artwork produced. Temporary placeholder icon/splash/adaptive
       assets are wired and acceptable for TestFlight; final icon/splash and App
       Store screenshots are still needed before public release.

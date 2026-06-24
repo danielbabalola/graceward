@@ -103,6 +103,39 @@ export type ApiErrorBody = {
 };
 
 /* -------------------------------------------------------------------------- */
+/* AI access control (closed-beta install ID)                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Header that carries the anonymous, on-device install ID with AI requests.
+ * Fastify lower-cases incoming header names, so server lookups use the
+ * lower-cased form; clients may send any casing. This is NOT an account or a
+ * device/advertising identifier — it is a random per-install token used only to
+ * apply per-install AI quotas for closed-beta abuse/cost control.
+ */
+export const INSTALL_ID_HEADER = "x-graceward-install-id";
+
+/** Stable error codes for the closed-beta AI access-control layer. */
+export const INSTALL_ID_REQUIRED_CODE = "INSTALL_ID_REQUIRED";
+export const AI_QUOTA_EXCEEDED_CODE = "AI_QUOTA_EXCEEDED";
+export const AI_DISABLED_CODE = "AI_DISABLED";
+
+// Standard 8-4-4-4-12 hex UUID (any version). The mobile client generates the
+// install ID with crypto.randomUUID(), so a UUID check is a strong, opaque
+// format guard without coupling to a specific UUID version.
+const INSTALL_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * True when `value` is a well-formed install ID (an opaque UUID). Trims
+ * surrounding whitespace; rejects anything that isn't a UUID-shaped string so a
+ * missing/garbage header is cleanly rejected before any paid provider work.
+ */
+export function isValidInstallId(value: unknown): value is string {
+  return typeof value === "string" && INSTALL_ID_RE.test(value.trim());
+}
+
+/* -------------------------------------------------------------------------- */
 /* Voice transcription                                                         */
 /* -------------------------------------------------------------------------- */
 

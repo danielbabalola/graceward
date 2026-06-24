@@ -4,6 +4,7 @@ import type {
   VoiceEntryType,
 } from "@graceward/ai-schemas";
 import { API_BASE_URL } from "./config";
+import { AI_ACCESS_MESSAGES, buildInstallIdHeader } from "./ai-access";
 
 export type StructureVoiceEntryParams = {
   /** Local file URI of the audio recording to upload. */
@@ -51,6 +52,7 @@ const MESSAGES: Record<string, string> = {
   UNSUPPORTED_AUDIO: "This recording's audio format can't be processed.",
   NO_AUDIO_FILE: "No audio could be found to process.",
   INVALID_REQUEST: "This recording can't be processed.",
+  ...AI_ACCESS_MESSAGES,
 };
 
 function messageForCode(code: string): string {
@@ -73,6 +75,7 @@ function filenameFromUri(uri: string): string {
 export async function structureVoiceEntry(
   params: StructureVoiceEntryParams,
 ): Promise<StructureVoiceEntryResponse> {
+  const installIdHeader = await buildInstallIdHeader();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -90,6 +93,7 @@ export async function structureVoiceEntry(
   try {
     response = await fetch(`${API_BASE_URL}/ai/structure-voice-entry`, {
       method: "POST",
+      headers: { ...installIdHeader },
       body: form,
       signal: controller.signal,
     });

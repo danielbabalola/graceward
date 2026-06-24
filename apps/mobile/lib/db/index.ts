@@ -100,5 +100,6 @@ export {
   hasAcknowledgedVoiceEntryConsent,
   acknowledgeVoiceEntryConsent,
   resetVoiceEntryConsent,
+  getOrCreateAiInstallId,
 } from "./preferences";
 export { deriveTitle, isFutureLocalDate, toLocalDateString } from "./helpers";

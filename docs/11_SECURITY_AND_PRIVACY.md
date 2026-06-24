@@ -44,14 +44,28 @@ policy. It is **not** finished legal text and must be reviewed before launch.
 - **Delete local data clears local content, audio, and preferences.** "Delete"
   permanently removes all local content rows (including saved transcripts within
   journal text) and on-device audio files, and resets preferences (including the
-  AI reflection, voice transcription, and voice-entry consent acknowledgements).
-  It cannot be undone.
+  AI reflection, voice transcription, and voice-entry consent acknowledgements,
+  and the anonymous AI install ID — see below). It cannot be undone.
+- **An anonymous install ID protects the AI features (closed beta).** To control
+  abuse and cost during the closed beta — without adding accounts — the app
+  generates a random ID (a UUID) the first time an AI action is used, stores it
+  locally, and sends it as the `X-Graceward-Install-Id` header **only with AI
+  requests**. It is **not an account**, requires no sign-in, and is **not
+  derived from any device hardware or advertising identifier**. The server uses
+  it solely to apply per-install daily AI quotas and logs only a short
+  fingerprint of it, never the full value. It is not used for analytics or
+  tracking, is never attached to non-AI requests, and is cleared by "Delete all
+  local data" (a fresh ID is generated on the next AI action). This is
+  closed-beta protection, not final public authentication.
 
 To verify against the labels: review App Store data categories as User Content
 and Audio Data (audio is sent off-device for journal transcription and for
-structured voice entry creation when the user chooses those actions); the MVP
-collects no Identifiers, Usage, or Diagnostics data. Do not overclaim privacy
-and do not present this draft as a final policy.
+structured voice entry creation when the user chooses those actions). The
+anonymous install ID is generated and used only to protect/secure the paid AI
+features (abuse/cost control), is not linked to identity, and is not used for
+tracking; the MVP collects no Usage or Diagnostics data and no advertising
+identifiers. Do not overclaim privacy and do not present this draft as a final
+policy.
 
 ## Security Principle
 
@@ -163,6 +177,7 @@ Allowed:
 - job ID
 - error category
 - provider metadata
+- anonymous install ID **fingerprint/prefix only** (never the full install ID)
 
 Not allowed in normal logs:
 

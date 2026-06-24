@@ -11,6 +11,12 @@ import { createOpenAiStructuringProvider } from "../ai/openai-structure-entry-pr
 import { AiError } from "../ai/types.js";
 import type { TranscriptionProvider } from "../ai/transcription-types.js";
 import type { EntryStructuringProvider } from "../ai/structure-entry-types.js";
+import {
+  ensureAiEnabled,
+  ensureWithinQuota,
+  resolveInstallId,
+} from "../ai/access-guard.js";
+import type { QuotaService } from "../ai/quota.js";
 import { createRateLimiter, resolveRateLimitConfig } from "../rate-limit.js";
 import { sendError } from "./send-error.js";
 
@@ -73,7 +79,10 @@ async function collectUpload(request: FastifyRequest): Promise<CollectedUpload> 
  * Neither the audio nor the transcript is persisted server-side; both exist
  * only for the duration of the request and are never logged.
  */
-export function registerStructureVoiceEntryRoute(app: FastifyInstance): void {
+export function registerStructureVoiceEntryRoute(
+  app: FastifyInstance,
+  quota: QuotaService,
+): void {
   // Own limiter instance: this route makes two paid AI calls (transcription +
   // structuring), so it gets its own ceiling.
   const limiter = createRateLimiter(resolveRateLimitConfig());
@@ -83,6 +92,11 @@ export function registerStructureVoiceEntryRoute(app: FastifyInstance): void {
   app.post(
     "/ai/structure-voice-entry",
     async (request: FastifyRequest, reply: FastifyReply) => {
+      // Emergency kill switch first — before any other work or paid call.
+      if (!ensureAiEnabled(request, reply)) {
+        return;
+      }
+
       const rate = limiter.check(request.ip);
       if (!rate.allowed) {
         void reply.header("Retry-After", String(rate.retryAfterSeconds));
@@ -97,6 +111,13 @@ export function registerStructureVoiceEntryRoute(app: FastifyInstance): void {
           "RATE_LIMITED",
           "Too many requests. Please wait a moment and try again.",
         );
+        return;
+      }
+
+      // Closed-beta access control: require a valid anonymous install ID
+      // (validated from the header before parsing the upload).
+      const installId = resolveInstallId(request, reply);
+      if (!installId) {
         return;
       }
 
@@ -172,6 +193,12 @@ export function registerStructureVoiceEntryRoute(app: FastifyInstance): void {
         return;
       }
 
+      // Per-install daily quota — checked (not incremented) after the upload is
+      // validated and before either paid provider call (transcribe + structure).
+      if (!ensureWithinQuota(request, reply, quota, installId, "structure")) {
+        return;
+      }
+
       let transcriptionProvider: TranscriptionProvider;
       let structuringProvider: EntryStructuringProvider;
       try {
@@ -218,6 +245,9 @@ export function registerStructureVoiceEntryRoute(app: FastifyInstance): void {
           );
         }
 
+        // Count the call only after the full structuring succeeds (this route
+        // makes two paid calls but counts as a single "structure" unit).
+        quota.record(installId, "structure");
         // Log only non-sensitive metadata — never audio, transcript, or fields.
         request.log.info(
           {

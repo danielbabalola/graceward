@@ -1,6 +1,7 @@
 import type { TranscribeReflectionResponse } from "@graceward/ai-schemas";
 import type { ApiErrorBody } from "@graceward/ai-schemas";
 import { API_BASE_URL } from "./config";
+import { AI_ACCESS_MESSAGES, buildInstallIdHeader } from "./ai-access";
 
 export type TranscribeReflectionParams = {
   /** Local file URI of the audio recording to upload. */
@@ -46,6 +47,7 @@ const MESSAGES: Record<string, string> = {
   UNSUPPORTED_AUDIO: "This recording's audio format can't be transcribed.",
   NO_AUDIO_FILE: "No audio could be found to transcribe.",
   INVALID_REQUEST: "This recording can't be transcribed.",
+  ...AI_ACCESS_MESSAGES,
 };
 
 function messageForCode(code: string): string {
@@ -67,6 +69,7 @@ function filenameFromUri(uri: string): string {
 export async function transcribeReflection(
   params: TranscribeReflectionParams,
 ): Promise<TranscribeReflectionResponse> {
+  const installIdHeader = await buildInstallIdHeader();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -84,6 +87,7 @@ export async function transcribeReflection(
   try {
     response = await fetch(`${API_BASE_URL}/ai/transcribe-reflection`, {
       method: "POST",
+      headers: { ...installIdHeader },
       body: form,
       signal: controller.signal,
     });

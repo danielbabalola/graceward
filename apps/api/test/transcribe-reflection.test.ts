@@ -6,11 +6,19 @@ import { AiError } from "../src/ai/types.js";
 
 const URL = "/ai/transcribe-reflection";
 
+// A valid (UUID-shaped) anonymous install ID and its header. Required now that
+// the AI endpoints enforce closed-beta access control.
+const INSTALL_ID = "22222222-2222-4222-8222-222222222222";
+const INSTALL_HEADERS = { "x-graceward-install-id": INSTALL_ID };
+
 const ENV_KEYS = [
   "OPENAI_API_KEY",
   "OPENAI_TRANSCRIPTION_MODEL",
   "AI_RATE_LIMIT_MAX",
   "AI_RATE_LIMIT_WINDOW_SECONDS",
+  "AI_ENDPOINTS_ENABLED",
+  "AI_DAILY_TOTAL_QUOTA_PER_INSTALL",
+  "AI_DAILY_TRANSCRIBE_QUOTA_PER_INSTALL",
 ] as const;
 
 let savedEnv: Record<string, string | undefined>;
@@ -86,6 +94,7 @@ describe("POST /ai/transcribe-reflection", () => {
       const res = await app.inject({
         method: "POST",
         url: URL,
+        headers: INSTALL_HEADERS,
         payload: { journalEntryId: "local_1" },
       });
       expect(res.statusCode).toBe(400);
@@ -102,7 +111,7 @@ describe("POST /ai/transcribe-reflection", () => {
       const res = await app.inject({
         method: "POST",
         url: URL,
-        headers: { "content-type": contentType },
+        headers: { "content-type": contentType, ...INSTALL_HEADERS },
         payload: body,
       });
       expect(res.statusCode).toBe(400);
@@ -124,7 +133,7 @@ describe("POST /ai/transcribe-reflection", () => {
       const res = await app.inject({
         method: "POST",
         url: URL,
-        headers: { "content-type": contentType },
+        headers: { "content-type": contentType, ...INSTALL_HEADERS },
         payload: body,
       });
       expect(res.statusCode).toBe(400);
@@ -146,7 +155,7 @@ describe("POST /ai/transcribe-reflection", () => {
       const res = await app.inject({
         method: "POST",
         url: URL,
-        headers: { "content-type": contentType },
+        headers: { "content-type": contentType, ...INSTALL_HEADERS },
         payload: body,
       });
       expect(res.statusCode).toBe(415);
@@ -168,7 +177,7 @@ describe("POST /ai/transcribe-reflection", () => {
       const res = await app.inject({
         method: "POST",
         url: URL,
-        headers: { "content-type": contentType },
+        headers: { "content-type": contentType, ...INSTALL_HEADERS },
         payload: body,
       });
       expect(res.statusCode).toBe(503);
@@ -191,7 +200,7 @@ describe("POST /ai/transcribe-reflection", () => {
       const res = await app.inject({
         method: "POST",
         url: URL,
-        headers: { "content-type": contentType },
+        headers: { "content-type": contentType, ...INSTALL_HEADERS },
         payload: body,
       });
       expect(res.body).not.toContain(marker);
@@ -202,9 +211,19 @@ describe("POST /ai/transcribe-reflection", () => {
     process.env.AI_RATE_LIMIT_MAX = "1";
     process.env.AI_RATE_LIMIT_WINDOW_SECONDS = "60";
     await withApp(async (app) => {
-      const first = await app.inject({ method: "POST", url: URL, payload: {} });
+      const first = await app.inject({
+        method: "POST",
+        url: URL,
+        headers: INSTALL_HEADERS,
+        payload: {},
+      });
       expect(first.statusCode).not.toBe(429);
-      const second = await app.inject({ method: "POST", url: URL, payload: {} });
+      const second = await app.inject({
+        method: "POST",
+        url: URL,
+        headers: INSTALL_HEADERS,
+        payload: {},
+      });
       expect(second.statusCode).toBe(429);
       expect(second.json().error.code).toBe("RATE_LIMITED");
       expect(second.headers["retry-after"]).toBeDefined();

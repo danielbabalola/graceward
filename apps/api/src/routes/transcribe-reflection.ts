@@ -7,6 +7,12 @@ import {
 import { createOpenAiTranscriptionProvider } from "../ai/openai-transcription-provider.js";
 import { AiError } from "../ai/types.js";
 import type { TranscriptionProvider } from "../ai/transcription-types.js";
+import {
+  ensureAiEnabled,
+  ensureWithinQuota,
+  resolveInstallId,
+} from "../ai/access-guard.js";
+import type { QuotaService } from "../ai/quota.js";
 import { createRateLimiter, resolveRateLimitConfig } from "../rate-limit.js";
 import { sendError } from "./send-error.js";
 
@@ -65,7 +71,10 @@ async function collectUpload(request: FastifyRequest): Promise<CollectedUpload> 
   return result;
 }
 
-export function registerTranscribeReflectionRoute(app: FastifyInstance): void {
+export function registerTranscribeReflectionRoute(
+  app: FastifyInstance,
+  quota: QuotaService,
+): void {
   // Separate limiter instance from the analyze route so transcription (a slower,
   // paid call) gets its own ceiling. In-memory only, swept periodically.
   const limiter = createRateLimiter(resolveRateLimitConfig());
@@ -75,6 +84,11 @@ export function registerTranscribeReflectionRoute(app: FastifyInstance): void {
   app.post(
     "/ai/transcribe-reflection",
     async (request: FastifyRequest, reply: FastifyReply) => {
+      // Emergency kill switch first — before any other work or paid call.
+      if (!ensureAiEnabled(request, reply)) {
+        return;
+      }
+
       const rate = limiter.check(request.ip);
       if (!rate.allowed) {
         void reply.header("Retry-After", String(rate.retryAfterSeconds));
@@ -89,6 +103,13 @@ export function registerTranscribeReflectionRoute(app: FastifyInstance): void {
           "RATE_LIMITED",
           "Too many requests. Please wait a moment and try again.",
         );
+        return;
+      }
+
+      // Closed-beta access control: require a valid anonymous install ID
+      // (validated from the header before parsing the upload).
+      const installId = resolveInstallId(request, reply);
+      if (!installId) {
         return;
       }
 
@@ -165,6 +186,12 @@ export function registerTranscribeReflectionRoute(app: FastifyInstance): void {
         return;
       }
 
+      // Per-install daily quota — checked (not incremented) after the upload is
+      // validated and before the paid provider call.
+      if (!ensureWithinQuota(request, reply, quota, installId, "transcribe")) {
+        return;
+      }
+
       let provider: TranscriptionProvider;
       try {
         provider = createOpenAiTranscriptionProvider();
@@ -182,6 +209,8 @@ export function registerTranscribeReflectionRoute(app: FastifyInstance): void {
           filename: upload.filename,
           mimeType: upload.mimeType,
         });
+        // Count the call only after a successful paid provider response.
+        quota.record(installId, "transcribe");
         // Log only non-sensitive metadata — never the audio or transcript.
         request.log.info(
           { requestId: request.id, provider: provider.name, model },

@@ -39,3 +39,7 @@ coverage/
 .turbo/
 tmp/
 temp/
+
+# API local data (closed-beta per-install AI quota store)
+.data/
+apps/api/.data/

@@ -1,13 +1,16 @@
+import * as Crypto from "expo-crypto";
 import { getDatabase } from "./client";
 
 /**
  * Device-local key/value preferences. These are intentionally NOT cloud-synced
- * and NOT included in data exports. Values are small, non-sensitive flags only.
+ * and NOT included in data exports. Values are small, non-sensitive flags plus
+ * the anonymous AI install ID (see below).
  */
 type PreferenceKey =
   | "aiReflectionConsentAcknowledged"
   | "voiceTranscriptionConsentAcknowledged"
-  | "voiceEntryConsentAcknowledged";
+  | "voiceEntryConsentAcknowledged"
+  | "aiInstallId";
 
 type PreferenceRow = {
   value: string;
@@ -101,4 +104,31 @@ export async function acknowledgeVoiceEntryConsent(): Promise<void> {
 /** Clears the acknowledgement so the voice-entry notice shows again. */
 export async function resetVoiceEntryConsent(): Promise<void> {
   await clearPreference(VOICE_ENTRY_CONSENT_KEY);
+}
+
+const AI_INSTALL_ID_KEY: PreferenceKey = "aiInstallId";
+
+// Standard 8-4-4-4-12 hex UUID (any version). Kept in sync with the server's
+// isValidInstallId check in @graceward/ai-schemas.
+const INSTALL_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Returns this install's anonymous AI ID, generating and persisting one on
+ * first use. This is a random UUID — NOT an account, and NOT derived from any
+ * device hardware or advertising identifier. It is stored locally only and sent
+ * with AI requests so the server can apply per-install daily quotas (closed-beta
+ * abuse/cost control). It is cleared by "Delete all local data" (the whole
+ * app_preferences table is wiped), after which a fresh ID is generated next
+ * time an AI action is used. A stored value that isn't UUID-shaped (corrupted)
+ * is replaced.
+ */
+export async function getOrCreateAiInstallId(): Promise<string> {
+  const existing = await getPreference(AI_INSTALL_ID_KEY);
+  if (existing && INSTALL_ID_RE.test(existing.trim())) {
+    return existing.trim();
+  }
+  const id = Crypto.randomUUID();
+  await setPreference(AI_INSTALL_ID_KEY, id);
+  return id;
 }

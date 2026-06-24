@@ -6,6 +6,7 @@ import type {
   ApiErrorBody,
 } from "@graceward/ai-schemas";
 import { API_BASE_URL } from "./config";
+import { AI_ACCESS_MESSAGES, buildInstallIdHeader } from "./ai-access";
 
 const ANALYZABLE_MODES: readonly AnalyzableMode[] = [
   "free_flow",
@@ -98,6 +99,7 @@ const MESSAGES: Record<string, string> = {
   AI_INVALID_RESPONSE:
     "Graceward couldn't make sense of the reflection just now. Please try again.",
   INVALID_REQUEST: "This reflection can't be analyzed.",
+  ...AI_ACCESS_MESSAGES,
 };
 
 function messageForCode(code: string): string {
@@ -113,6 +115,7 @@ function messageForCode(code: string): string {
 export async function analyzeReflection(
   request: AnalyzeReflectionRequest,
 ): Promise<AnalyzeReflectionResponse> {
+  const installIdHeader = await buildInstallIdHeader();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -120,7 +123,7 @@ export async function analyzeReflection(
   try {
     response = await fetch(`${API_BASE_URL}/ai/analyze-reflection`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...installIdHeader },
       body: JSON.stringify(request),
       signal: controller.signal,
     });
