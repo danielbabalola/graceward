@@ -20,6 +20,14 @@ export {
 export { listAllForExport, deleteAllLocalData } from "./data-management";
 export type { LocalDataExport } from "./data-management";
 export {
+  createAiReflectionResult,
+  getLatestAiReflectionResult,
+} from "./ai-results";
+export type {
+  AiReflectionResult,
+  CreateAiReflectionResultInput,
+} from "./ai-results";
+export {
   createPrayerRequest,
   listPrayerRequests,
   listPrayerRequestsByStatus,
@@ -53,4 +61,9 @@ export {
   updateWin,
   softDeleteWin,
 } from "./wins";
+export {
+  hasAcknowledgedAiReflectionConsent,
+  acknowledgeAiReflectionConsent,
+  resetAiReflectionConsent,
+} from "./preferences";
 export { deriveTitle, isFutureLocalDate, toLocalDateString } from "./helpers";

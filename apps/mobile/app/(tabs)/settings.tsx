@@ -1,20 +1,61 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Screen } from "@/components/ui/Screen";
 import { Section } from "@/components/ui/Section";
 import { SettingsRow } from "@/components/ui/SettingsRow";
-import { deleteAllLocalData } from "@/lib/db";
+import {
+  deleteAllLocalData,
+  hasAcknowledgedAiReflectionConsent,
+  resetAiReflectionConsent,
+} from "@/lib/db";
 import { exportLocalData } from "@/lib/local-data-export";
 import { colors, spacing, typography } from "@/theme/tokens";
 
 type ExportState = "idle" | "exporting" | "done" | "error";
 type DeleteState = "idle" | "deleting" | "done" | "error";
+type ConsentState = "loading" | "acknowledged" | "not-acknowledged";
 
 export default function SettingsScreen() {
   const [exportState, setExportState] = useState<ExportState>("idle");
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
+  const [consentState, setConsentState] = useState<ConsentState>("loading");
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        try {
+          const acknowledged = await hasAcknowledgedAiReflectionConsent();
+          if (active) {
+            setConsentState(acknowledged ? "acknowledged" : "not-acknowledged");
+          }
+        } catch {
+          // Treat a read failure as not acknowledged so the notice still shows.
+          if (active) {
+            setConsentState("not-acknowledged");
+          }
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+
+  async function handleResetConsent() {
+    try {
+      await resetAiReflectionConsent();
+      setConsentState("not-acknowledged");
+    } catch (error: unknown) {
+      console.warn(
+        "Failed to reset AI consent notice:",
+        error instanceof Error ? error.message : "unknown error",
+      );
+    }
+  }
 
   async function handleExport() {
     if (exportState === "exporting") {
@@ -174,11 +215,30 @@ export default function SettingsScreen() {
       </Section>
 
       <Section title="AI & Cloud">
+        <SettingsRow
+          title="AI reflections are manual"
+          description="AI reflections run only when you choose them. Automatic analysis is not enabled."
+        />
+        <SettingsRow
+          title="Privacy notice"
+          description={
+            consentState === "acknowledged"
+              ? "Acknowledged. The privacy notice won't show before each AI reflection."
+              : "Not acknowledged yet. The privacy notice will show the first time you reflect with Graceward."
+          }
+        />
+        {consentState === "acknowledged" ? (
+          <Button
+            label="Reset AI consent notice"
+            variant="secondary"
+            onPress={handleResetConsent}
+          />
+        ) : null}
         <Card
           variant="subtle"
           eyebrow="Coming later"
-          title="AI & cloud features aren't enabled yet"
-          description="AI reflection, transcription, cloud sync, and backup are not turned on. When they arrive, they'll be clearly explained and optional."
+          title="Cloud features aren't enabled yet"
+          description="Transcription, cloud sync, and backup are not turned on. When they arrive, they'll be clearly explained and optional."
         />
       </Section>
 

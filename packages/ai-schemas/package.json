@@ -12,6 +12,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
   "devDependencies": {
     "@graceward/config": "workspace:*",
     "typescript": "^5.8.2"

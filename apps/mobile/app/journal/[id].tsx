@@ -12,11 +12,14 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import type { AudioAsset, JournalEntry } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { GuidedPromptEditor } from "@/components/reflection/GuidedPromptEditor";
 import { AudioPlayback } from "@/components/journal/AudioPlayback";
+import { JournalAiSection } from "@/components/journal/JournalAiSection";
 import { LinkedFromReflection } from "@/components/journal/LinkedFromReflection";
 import { RememberFromReflection } from "@/components/journal/RememberFromReflection";
+import { canAnalyzeEntry } from "@/lib/api/reflection";
 import {
   getAudioAssetByEntryId,
   getJournalEntryById,
@@ -296,6 +299,13 @@ export default function JournalEntryDetailScreen() {
           {statusLabel(entry.status)} · {syncStatusLabel(entry.syncStatus)}
         </Text>
 
+        <Card
+          variant="subtle"
+          title="Reflect with Graceward"
+          description="AI reflection will be available after transcription is added."
+          style={styles.aiNote}
+        />
+
         <LinkedFromReflection journalEntryId={entry.id} />
 
         <RememberFromReflection journalEntryId={entry.id} />
@@ -348,6 +358,8 @@ export default function JournalEntryDetailScreen() {
         <Text style={styles.privacyLine}>
           {statusLabel(entry.status)} · {syncStatusLabel(entry.syncStatus)}
         </Text>
+
+        {canAnalyzeEntry(entry) ? <JournalAiSection entry={entry} /> : null}
 
         <LinkedFromReflection journalEntryId={entry.id} />
 
@@ -413,6 +425,8 @@ export default function JournalEntryDetailScreen() {
             <Text style={styles.privacyLine}>
               {statusLabel(entry.status)} · {syncStatusLabel(entry.syncStatus)}
             </Text>
+
+            {canAnalyzeEntry(entry) ? <JournalAiSection entry={entry} /> : null}
 
             <LinkedFromReflection journalEntryId={entry.id} />
 
@@ -502,6 +516,9 @@ const styles = StyleSheet.create({
   },
   action: {
     marginBottom: spacing.sm,
+  },
+  aiNote: {
+    marginBottom: spacing.md,
   },
   audioWrapper: {
     marginBottom: spacing.md,

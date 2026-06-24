@@ -140,6 +140,44 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 6,
+    up: async (db) => {
+      // Caches AI reflection results locally so the user can revisit them
+      // without re-sending the journal entry. Stores only the structured
+      // result JSON and non-sensitive provider/model metadata — no secrets.
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS ai_reflection_results (
+          id TEXT PRIMARY KEY NOT NULL,
+          journal_entry_id TEXT NOT NULL,
+          result_json TEXT NOT NULL,
+          provider TEXT,
+          model TEXT,
+          created_at TEXT NOT NULL,
+          deleted_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_ai_reflection_results_journal_entry_id
+          ON ai_reflection_results (journal_entry_id);
+        CREATE INDEX IF NOT EXISTS idx_ai_reflection_results_created_at
+          ON ai_reflection_results (created_at);
+      `);
+    },
+  },
+  {
+    version: 7,
+    up: async (db) => {
+      // Local-only, device-scoped key/value preferences. Never synced and never
+      // exported. Used (for now) to remember that the user acknowledged the AI
+      // reflection privacy notice so it isn't shown on every analysis.
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS app_preferences (
+          key TEXT PRIMARY KEY NOT NULL,
+          value TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+      `);
+    },
+  },
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {

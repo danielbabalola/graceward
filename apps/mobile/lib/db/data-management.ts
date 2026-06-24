@@ -94,7 +94,8 @@ export async function deleteAllLocalData(): Promise<void> {
        DELETE FROM journal_entries;
        DELETE FROM prayer_requests;
        DELETE FROM gratitudes;
-       DELETE FROM wins;`,
+       DELETE FROM wins;
+       DELETE FROM ai_reflection_results;`,
     );
   });
 
