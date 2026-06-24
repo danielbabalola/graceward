@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { Card } from "@/components/ui/Card";
 import { Screen } from "@/components/ui/Screen";
 import { Section } from "@/components/ui/Section";
@@ -14,6 +15,7 @@ export default function TodayScreen() {
           eyebrow="Start here"
           title="New Reflection"
           description="Speak or type honestly about your day. One tap away when you're ready."
+          onPress={() => router.push("/reflection")}
         />
         <Card
           variant="subtle"
