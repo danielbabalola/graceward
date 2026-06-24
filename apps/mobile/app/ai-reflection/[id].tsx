@@ -18,6 +18,7 @@ import {
   analyzeReflection,
   buildAnalyzeRequest,
   canAnalyzeEntry,
+  isAiResultStale,
   ReflectionApiError,
 } from "@/lib/api/reflection";
 import {
@@ -265,7 +266,7 @@ export default function AiReflectionScreen() {
     // current result is view-only — nothing is re-sent automatically.
     const resultIsStale =
       resultCreatedAt !== null &&
-      new Date(entry.updatedAt).getTime() > new Date(resultCreatedAt).getTime();
+      isAiResultStale(entry.updatedAt, resultCreatedAt);
     return (
       <FlowScreen title="Reflect with Graceward" subtitle={metaLine}>
         {resultIsStale ? (

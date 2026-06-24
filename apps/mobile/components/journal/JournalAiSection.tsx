@@ -4,6 +4,7 @@ import { router, useFocusEffect } from "expo-router";
 import type { JournalEntry } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { isAiResultStale } from "@/lib/api/reflection";
 import { getLatestAiReflectionResult, type AiReflectionResult } from "@/lib/db";
 import { spacing } from "@/theme/tokens";
 
@@ -18,11 +19,6 @@ function openAiReflection(entryId: string, reflectAgain = false): void {
       ? { id: entryId, reflectAgain: "1" }
       : { id: entryId },
   });
-}
-
-/** True when the entry was edited after the cached AI result was created. */
-function isResultStale(entry: JournalEntry, result: AiReflectionResult): boolean {
-  return new Date(entry.updatedAt).getTime() > new Date(result.createdAt).getTime();
 }
 
 /**
@@ -81,7 +77,7 @@ export function JournalAiSection({ entry }: Props) {
     );
   }
 
-  const stale = isResultStale(entry, result);
+  const stale = isAiResultStale(entry.updatedAt, result.createdAt);
 
   // Current result, entry unchanged: view-only. No "Reflect again" here.
   if (!stale) {

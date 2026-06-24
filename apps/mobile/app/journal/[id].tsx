@@ -12,11 +12,11 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import type { AudioAsset, JournalEntry } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { GuidedPromptEditor } from "@/components/reflection/GuidedPromptEditor";
 import { AudioPlayback } from "@/components/journal/AudioPlayback";
 import { JournalAiSection } from "@/components/journal/JournalAiSection";
+import { VoiceTranscription } from "@/components/journal/VoiceTranscription";
 import { LinkedFromReflection } from "@/components/journal/LinkedFromReflection";
 import { RememberFromReflection } from "@/components/journal/RememberFromReflection";
 import { canAnalyzeEntry } from "@/lib/api/reflection";
@@ -279,8 +279,8 @@ export default function JournalEntryDetailScreen() {
           )}
         </View>
         <Text style={styles.privacyLine}>
-          Audio is stored privately on this device. Transcription isn't
-          available yet.
+          Your audio is stored privately on this device. It is only sent
+          anywhere if you choose to transcribe it.
         </Text>
 
         {guidedVoicePayload && guidedVoicePayload.prompts.length > 0 ? (
@@ -299,11 +299,11 @@ export default function JournalEntryDetailScreen() {
           {statusLabel(entry.status)} · {syncStatusLabel(entry.syncStatus)}
         </Text>
 
-        <Card
-          variant="subtle"
-          title="Reflect with Graceward"
-          description="AI reflection will be available after transcription is added."
-          style={styles.aiNote}
+        <VoiceTranscription
+          entry={entry}
+          audioAsset={audioAsset}
+          audioAvailable={audioAvailable}
+          onTranscribed={setEntry}
         />
 
         <LinkedFromReflection journalEntryId={entry.id} />
@@ -516,9 +516,6 @@ const styles = StyleSheet.create({
   },
   action: {
     marginBottom: spacing.sm,
-  },
-  aiNote: {
-    marginBottom: spacing.md,
   },
   audioWrapper: {
     marginBottom: spacing.md,

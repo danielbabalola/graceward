@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { Alert, Linking, StyleSheet, Text, View } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useFocusEffect } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -9,33 +10,70 @@ import { SettingsRow } from "@/components/ui/SettingsRow";
 import {
   deleteAllLocalData,
   hasAcknowledgedAiReflectionConsent,
+  hasAcknowledgedVoiceTranscriptionConsent,
   resetAiReflectionConsent,
+  resetVoiceTranscriptionConsent,
 } from "@/lib/db";
+import { getDiagnosticInfo } from "@/lib/app-info";
+import {
+  APP_NAME,
+  APP_TAGLINE,
+  SUPPORT_EMAIL,
+  buildBugReportBody,
+  buildFeedbackBody,
+  buildMailtoUrl,
+  formatDiagnostics,
+} from "@/lib/diagnostics";
 import { exportLocalData } from "@/lib/local-data-export";
 import { colors, spacing, typography } from "@/theme/tokens";
 
 type ExportState = "idle" | "exporting" | "done" | "error";
 type DeleteState = "idle" | "deleting" | "done" | "error";
 type ConsentState = "loading" | "acknowledged" | "not-acknowledged";
+type HelpMessage = { kind: "success" | "info" | "error"; text: string } | null;
 
 export default function SettingsScreen() {
   const [exportState, setExportState] = useState<ExportState>("idle");
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [consentState, setConsentState] = useState<ConsentState>("loading");
+  const [transcriptionConsentState, setTranscriptionConsentState] =
+    useState<ConsentState>("loading");
+  const [helpMessage, setHelpMessage] = useState<HelpMessage>(null);
+
+  // Read once for the About display. Handlers re-read fresh so the diagnostics
+  // timestamp reflects the moment the user copies/sends.
+  const appVersionLabel = useMemo(() => {
+    const info = getDiagnosticInfo();
+    if (!info.appVersion) {
+      return "Version unavailable in this build";
+    }
+    return info.buildNumber
+      ? `Version ${info.appVersion} (${info.buildNumber})`
+      : `Version ${info.appVersion}`;
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       (async () => {
         try {
-          const acknowledged = await hasAcknowledgedAiReflectionConsent();
+          const [aiAcknowledged, transcriptionAcknowledged] = await Promise.all([
+            hasAcknowledgedAiReflectionConsent(),
+            hasAcknowledgedVoiceTranscriptionConsent(),
+          ]);
           if (active) {
-            setConsentState(acknowledged ? "acknowledged" : "not-acknowledged");
+            setConsentState(
+              aiAcknowledged ? "acknowledged" : "not-acknowledged",
+            );
+            setTranscriptionConsentState(
+              transcriptionAcknowledged ? "acknowledged" : "not-acknowledged",
+            );
           }
         } catch {
-          // Treat a read failure as not acknowledged so the notice still shows.
+          // Treat a read failure as not acknowledged so the notices still show.
           if (active) {
             setConsentState("not-acknowledged");
+            setTranscriptionConsentState("not-acknowledged");
           }
         }
       })();
@@ -52,6 +90,18 @@ export default function SettingsScreen() {
     } catch (error: unknown) {
       console.warn(
         "Failed to reset AI consent notice:",
+        error instanceof Error ? error.message : "unknown error",
+      );
+    }
+  }
+
+  async function handleResetTranscriptionConsent() {
+    try {
+      await resetVoiceTranscriptionConsent();
+      setTranscriptionConsentState("not-acknowledged");
+    } catch (error: unknown) {
+      console.warn(
+        "Failed to reset voice transcription consent notice:",
         error instanceof Error ? error.message : "unknown error",
       );
     }
@@ -117,6 +167,7 @@ export default function SettingsScreen() {
       // Delete also resets device-local preferences, so reflect the fresh
       // state here without waiting for a refocus.
       setConsentState("not-acknowledged");
+      setTranscriptionConsentState("not-acknowledged");
       setDeleteState("done");
     } catch (error: unknown) {
       console.warn(
@@ -124,6 +175,71 @@ export default function SettingsScreen() {
         error instanceof Error ? error.message : "unknown error",
       );
       setDeleteState("error");
+    }
+  }
+
+  // Opens the user's mail app with a prefilled, content-free message. If no mail
+  // app is available (common on simulators), the same text is copied to the
+  // clipboard so the tester can paste it into an email themselves. Nothing is
+  // ever sent automatically — the tester chooses to send.
+  async function openMailOrCopy(
+    subject: string,
+    body: string,
+    contextLabel: string,
+  ) {
+    const url = buildMailtoUrl(SUPPORT_EMAIL, subject, body);
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+        setHelpMessage(null);
+        return;
+      }
+    } catch {
+      // Fall through to the clipboard fallback below.
+    }
+
+    try {
+      await Clipboard.setStringAsync(
+        `To: ${SUPPORT_EMAIL}\nSubject: ${subject}\n\n${body}`,
+      );
+      setHelpMessage({
+        kind: "info",
+        text: `No mail app found, so your ${contextLabel} was copied. Paste it into an email to ${SUPPORT_EMAIL}.`,
+      });
+    } catch {
+      setHelpMessage({
+        kind: "error",
+        text: "Couldn't open mail or copy just now. Please try again.",
+      });
+    }
+  }
+
+  async function handleSendFeedback() {
+    await openMailOrCopy(
+      `${APP_NAME} feedback`,
+      buildFeedbackBody(),
+      "feedback note",
+    );
+  }
+
+  async function handleReportBug() {
+    const body = buildBugReportBody(getDiagnosticInfo());
+    await openMailOrCopy(`${APP_NAME} bug report`, body, "bug report");
+  }
+
+  async function handleCopyDiagnostics() {
+    try {
+      await Clipboard.setStringAsync(formatDiagnostics(getDiagnosticInfo()));
+      setHelpMessage({
+        kind: "success",
+        text: "Diagnostic info copied. It contains only safe app details — no personal content.",
+      });
+    } catch {
+      setHelpMessage({
+        kind: "error",
+        text: "Couldn't copy diagnostics just now. Please try again.",
+      });
     }
   }
 
@@ -138,12 +254,12 @@ export default function SettingsScreen() {
           description="Your reflections, prayers, gratitudes, and faithfulness moments are stored locally on this device."
         />
         <SettingsRow
-          title="Voice stays local"
-          description="Voice recordings are kept on this device only."
+          title="Voice stays local until you choose otherwise"
+          description="Voice recordings are kept on this device. A recording is only sent anywhere if you choose to transcribe it."
         />
         <SettingsRow
-          title="Only AI reflections leave your device"
-          description="Your data stays on this device, except the reflections you explicitly send for AI analysis. Sync and backup are not enabled."
+          title="Only what you choose leaves your device"
+          description="Your data stays on this device, except the reflections you explicitly send for AI analysis and the voice recordings you explicitly choose to transcribe. Sync and backup are not enabled."
         />
         <SettingsRow
           title="If you remove the app"
@@ -157,12 +273,20 @@ export default function SettingsScreen() {
           description="Voice recordings remain on this device after you save them."
         />
         <SettingsRow
-          title="Transcription"
-          description="Transcription isn't available yet."
+          title="Voice transcription is manual"
+          description="Voice recordings are never transcribed automatically. When you choose to transcribe one, only that selected recording is sent to Graceward's transcription service to be converted to text."
+        />
+        <SettingsRow
+          title="Transcribing keeps your audio"
+          description="Transcribing a recording does not delete it. Your original audio stays on this device after the transcript is created."
+        />
+        <SettingsRow
+          title="Audio retention controls are coming later"
+          description="For now, recordings stay on this device until you delete them. Options to manage or automatically remove audio are coming later."
         />
         <SettingsRow
           title="Cloud upload"
-          description="Cloud upload isn't implemented. Audio never leaves your device."
+          description="Cloud sync and backup aren't implemented. Audio only leaves your device when you choose to transcribe a specific recording."
         />
       </Section>
 
@@ -227,11 +351,11 @@ export default function SettingsScreen() {
           description="When you choose an AI reflection, the text of that reflection is sent to Graceward's AI service. Nothing else leaves your device."
         />
         <SettingsRow
-          title="Voice transcription"
-          description="Voice transcription isn't available yet, so AI reflection works with typed reflections for now."
+          title="Voice transcription is manual"
+          description="Voice recordings are never transcribed automatically. When you choose to transcribe one, the selected audio is sent to Graceward's transcription service, and the transcript is then eligible for AI reflection."
         />
         <SettingsRow
-          title="Privacy notice"
+          title="AI reflection privacy notice"
           description={
             consentState === "acknowledged"
               ? "Acknowledged. The privacy notice won't show before each AI reflection."
@@ -245,20 +369,73 @@ export default function SettingsScreen() {
             onPress={handleResetConsent}
           />
         ) : null}
+        <SettingsRow
+          title="Transcription privacy notice"
+          description={
+            transcriptionConsentState === "acknowledged"
+              ? "Acknowledged. The privacy notice won't show before each transcription."
+              : "Not acknowledged yet. The privacy notice will show the first time you transcribe a voice reflection."
+          }
+        />
+        {transcriptionConsentState === "acknowledged" ? (
+          <Button
+            label="Reset transcription consent notice"
+            variant="secondary"
+            onPress={handleResetTranscriptionConsent}
+          />
+        ) : null}
         <Card
           variant="subtle"
           eyebrow="Coming later"
           title="Cloud features aren't enabled yet"
-          description="Transcription, cloud sync, and backup are not turned on. When they arrive, they'll be clearly explained and optional."
+          description="Cloud sync and backup are not turned on. When they arrive, they'll be clearly explained and optional."
+        />
+      </Section>
+
+      <Section title="Help & Feedback">
+        <Text style={styles.paragraph}>
+          You&apos;re part of an early closed beta. Your thoughts help shape
+          Graceward. Nothing is sent automatically — you choose what to share.
+        </Text>
+        <Button
+          label="Send feedback"
+          variant="secondary"
+          onPress={handleSendFeedback}
+        />
+        <Button
+          label="Report a bug"
+          variant="secondary"
+          onPress={handleReportBug}
+        />
+        <Button
+          label="Copy diagnostic info"
+          variant="secondary"
+          onPress={handleCopyDiagnostics}
+        />
+        {helpMessage ? (
+          <Text
+            style={
+              helpMessage.kind === "error"
+                ? styles.errorText
+                : helpMessage.kind === "info"
+                  ? styles.paragraph
+                  : styles.successText
+            }
+          >
+            {helpMessage.text}
+          </Text>
+        ) : null}
+        <SettingsRow
+          title="What a bug report includes"
+          description="Only safe app details: version, build, platform, OS, which API environment you're on (host only), and a timestamp. It never includes your reflections, prayers, gratitudes, faithfulness moments, audio, transcripts, or AI responses — and no API keys or secrets."
         />
       </Section>
 
       <Section title="About">
         <View style={styles.aboutCard}>
-          <Text style={styles.aboutName}>Graceward</Text>
-          <Text style={styles.aboutTagline}>
-            Pause. Reflect. Remember God&apos;s faithfulness.
-          </Text>
+          <Text style={styles.aboutName}>{APP_NAME}</Text>
+          <Text style={styles.aboutTagline}>{APP_TAGLINE}</Text>
+          <Text style={styles.aboutVersion}>{appVersionLabel}</Text>
           <Text style={styles.aboutNote}>
             Graceward is local-first. Your reflections live on your device.
           </Text>
@@ -296,6 +473,10 @@ const styles = StyleSheet.create({
   aboutTagline: {
     ...typography.body,
     color: colors.textMuted,
+  },
+  aboutVersion: {
+    ...typography.bodySmall,
+    color: colors.textSubtle,
   },
   aboutNote: {
     ...typography.bodySmall,

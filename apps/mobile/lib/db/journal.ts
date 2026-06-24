@@ -204,6 +204,28 @@ export async function updateJournalEntry(
   return getJournalEntryById(id);
 }
 
+/**
+ * Stores a manually-created voice transcript on the journal entry. The
+ * transcript becomes the entry's raw_text so it exports and can be analyzed by
+ * "Reflect with Graceward", while input_type stays "voice" and the existing
+ * title is preserved (a voice reflection keeps its calm voice label). Returns
+ * the refreshed entry, or null if it no longer exists.
+ */
+export async function saveVoiceTranscript(
+  id: string,
+  transcript: string,
+): Promise<JournalEntry | null> {
+  const db = await getDatabase();
+  const nowIso = new Date().toISOString();
+  await db.runAsync(
+    `UPDATE journal_entries
+      SET raw_text = ?, updated_at = ?
+      WHERE id = ? AND deleted_at IS NULL`,
+    [transcript, nowIso, id],
+  );
+  return getJournalEntryById(id);
+}
+
 export async function softDeleteJournalEntry(id: string): Promise<void> {
   const db = await getDatabase();
   const nowIso = new Date().toISOString();

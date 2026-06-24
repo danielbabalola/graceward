@@ -8,6 +8,7 @@ export {
   listJournalEntryDatesForMonth,
   getJournalEntryById,
   updateJournalEntry,
+  saveVoiceTranscript,
   softDeleteJournalEntry,
 } from "./journal";
 export type { UpdateJournalEntryInput } from "./journal";
@@ -15,6 +16,7 @@ export {
   createAudioAsset,
   getAudioAssetByEntryId,
   listAudioAssetsForExport,
+  updateAudioTranscriptionStatus,
   softDeleteAudioAssetsForEntry,
 } from "./audio";
 export { listAllForExport, deleteAllLocalData } from "./data-management";
@@ -79,5 +81,8 @@ export {
   hasAcknowledgedAiReflectionConsent,
   acknowledgeAiReflectionConsent,
   resetAiReflectionConsent,
+  hasAcknowledgedVoiceTranscriptionConsent,
+  acknowledgeVoiceTranscriptionConsent,
+  resetVoiceTranscriptionConsent,
 } from "./preferences";
 export { deriveTitle, isFutureLocalDate, toLocalDateString } from "./helpers";

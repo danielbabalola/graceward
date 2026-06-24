@@ -4,7 +4,9 @@ import { getDatabase } from "./client";
  * Device-local key/value preferences. These are intentionally NOT cloud-synced
  * and NOT included in data exports. Values are small, non-sensitive flags only.
  */
-type PreferenceKey = "aiReflectionConsentAcknowledged";
+type PreferenceKey =
+  | "aiReflectionConsentAcknowledged"
+  | "voiceTranscriptionConsentAcknowledged";
 
 type PreferenceRow = {
   value: string;
@@ -54,4 +56,26 @@ export async function acknowledgeAiReflectionConsent(): Promise<void> {
 /** Clears the acknowledgement so the privacy notice is shown again next time. */
 export async function resetAiReflectionConsent(): Promise<void> {
   await clearPreference(AI_REFLECTION_CONSENT_KEY);
+}
+
+const VOICE_TRANSCRIPTION_CONSENT_KEY: PreferenceKey =
+  "voiceTranscriptionConsentAcknowledged";
+
+/**
+ * True once the user has acknowledged the voice transcription privacy notice.
+ * Tracked separately from the AI reflection consent so each upload type is
+ * consented to on its own terms.
+ */
+export async function hasAcknowledgedVoiceTranscriptionConsent(): Promise<boolean> {
+  return (await getPreference(VOICE_TRANSCRIPTION_CONSENT_KEY)) === "true";
+}
+
+/** Records that the user acknowledged the voice transcription privacy notice. */
+export async function acknowledgeVoiceTranscriptionConsent(): Promise<void> {
+  await setPreference(VOICE_TRANSCRIPTION_CONSENT_KEY, "true");
+}
+
+/** Clears the acknowledgement so the transcription notice shows again. */
+export async function resetVoiceTranscriptionConsent(): Promise<void> {
+  await clearPreference(VOICE_TRANSCRIPTION_CONSENT_KEY);
 }

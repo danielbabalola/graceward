@@ -1,5 +1,9 @@
 import * as Crypto from "expo-crypto";
-import type { AudioAsset, CreateAudioAssetInput } from "@graceward/shared";
+import type {
+  AudioAsset,
+  CreateAudioAssetInput,
+  TranscriptionStatus,
+} from "@graceward/shared";
 import { getDatabase } from "./client";
 
 type AudioAssetRow = {
@@ -97,6 +101,30 @@ export async function listAudioAssetsForExport(): Promise<AudioAsset[]> {
       ORDER BY created_at DESC`,
   );
   return rows.map(mapRow);
+}
+
+/**
+ * Updates the transcription status of a single (non-deleted) audio asset.
+ * Used by the manual transcription flow to track none → processing →
+ * completed/failed. Returns the refreshed asset, or null if it no longer
+ * exists (e.g. the audio was deleted).
+ */
+export async function updateAudioTranscriptionStatus(
+  audioAssetId: string,
+  status: TranscriptionStatus,
+): Promise<AudioAsset | null> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `UPDATE audio_assets
+      SET transcription_status = ?
+      WHERE id = ? AND deleted_at IS NULL`,
+    [status, audioAssetId],
+  );
+  const row = await db.getFirstAsync<AudioAssetRow>(
+    `SELECT * FROM audio_assets WHERE id = ? AND deleted_at IS NULL`,
+    [audioAssetId],
+  );
+  return row ? mapRow(row) : null;
 }
 
 export async function softDeleteAudioAssetsForEntry(

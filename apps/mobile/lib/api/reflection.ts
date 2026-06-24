@@ -21,12 +21,17 @@ export function canAnalyzeEntry(entry: JournalEntry): boolean {
 
 /**
  * Builds the analyze request from a journal entry, or returns null when the
- * entry is not eligible (voice-only, empty text, or an unsupported mode).
+ * entry is not eligible (empty text, or an unsupported mode).
+ *
+ * Text entries use their raw_text directly. Voice entries become eligible once
+ * the user has manually transcribed them: the saved transcript lives in
+ * raw_text and is sent as the analyzable text. The audio itself is never sent
+ * to the AI reflection endpoint — only the transcript text is.
  */
 export function buildAnalyzeRequest(
   entry: JournalEntry,
 ): AnalyzeReflectionRequest | null {
-  if (entry.inputType !== "text") {
+  if (entry.inputType !== "text" && entry.inputType !== "voice") {
     return null;
   }
   const rawText = entry.rawText?.trim();
@@ -40,9 +45,24 @@ export function buildAnalyzeRequest(
     journalEntryId: entry.id,
     entryDate: entry.entryDate,
     mode: entry.mode as AnalyzableMode,
+    // The endpoint analyzes text only; a transcribed voice entry is sent as
+    // text since its transcript is the analyzable content.
     inputType: "text",
     rawText,
   };
+}
+
+/**
+ * True when an entry was edited after an AI reflection result was created, so
+ * the cached result is stale relative to the current entry. Editing a voice
+ * transcript bumps the entry's updatedAt, which makes a prior AI result stale
+ * through this same comparison. Pure and timezone-agnostic (ISO timestamps).
+ */
+export function isAiResultStale(
+  entryUpdatedAt: string,
+  resultCreatedAt: string,
+): boolean {
+  return new Date(entryUpdatedAt).getTime() > new Date(resultCreatedAt).getTime();
 }
 
 export class ReflectionApiError extends Error {
