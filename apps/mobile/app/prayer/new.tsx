@@ -16,6 +16,7 @@ import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
 import { createPrayerRequest, toLocalDateString } from "@/lib/db";
+import { hasTypedEntryContent, safeFollowUpDate } from "@/lib/voice-entry-fields";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function NewPrayerRequestScreen() {
@@ -36,7 +37,8 @@ export default function NewPrayerRequestScreen() {
     }
     setTitle(result.fields.title);
     setDescription(result.fields.description ?? "");
-    setFollowUp(result.fields.followUpAt ?? null);
+    // Defense-in-depth: never accept an inferred or past follow-up date.
+    setFollowUp(safeFollowUpDate(result.fields.followUpAt));
   }
 
   async function handleSave() {
@@ -88,9 +90,7 @@ export default function NewPrayerRequestScreen() {
           entryType="prayer"
           entryDate={toLocalDateString(new Date())}
           onStructured={handleStructured}
-          hasExistingInput={
-            title.trim().length > 0 || description.trim().length > 0
-          }
+          hasExistingInput={hasTypedEntryContent([title, description])}
         />
 
         <View style={styles.field}>

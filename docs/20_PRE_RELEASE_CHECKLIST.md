@@ -37,13 +37,27 @@ cutting a build.
 - [ ] Microphone flow: record a voice reflection, confirm permission prompt and
       local playback.
 - [ ] Export: produces a JSON file via the share sheet; confirm it excludes raw
-      audio bytes.
+      audio bytes (and never includes structured-voice-entry recordings, which
+      are discarded).
 - [ ] Delete: clears local content, audio, and preferences; app still works with
       empty states.
 - [ ] AI reflection consent: AI runs only after explicit consent; consent notice
       reappears after a delete.
 - [ ] AI error states: with no/invalid `OPENAI_API_KEY` the app shows the calm
       "not configured" message; rapid requests surface the rate-limited message.
+- [ ] Voice entry flow (prayer/gratitude/faithfulness/lesson): "Speak instead of
+      typing" records, the privacy notice shows on first use, and on "Use this
+      recording" the fields are filled for review before saving.
+- [ ] Voice entry consent + reset: the voice-entry notice reappears after a
+      delete, and **Settings → AI & Cloud** offers a "Reset voice entry consent
+      notice" row once acknowledged.
+- [ ] Voice entry replacement safety: with text already typed, using a recording
+      first asks before replacing the fields; Cancel never uploads.
+- [ ] Voice entry failure/retry: with no/invalid `OPENAI_API_KEY` the calm error
+      shows, typed fields are untouched, and "Try again" works; double taps don't
+      create duplicate uploads.
+- [ ] Prayer follow-up date: spoken time ("by next Monday") fills the follow-up;
+      no spoken time leaves it blank; a past/garbage date is never set.
 
 ## Closed beta: Help & Feedback (Settings)
 

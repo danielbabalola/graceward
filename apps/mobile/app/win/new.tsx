@@ -15,6 +15,7 @@ import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
 import { createWin, toLocalDateString } from "@/lib/db";
+import { hasTypedEntryContent } from "@/lib/voice-entry-fields";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function NewWinScreen() {
@@ -84,9 +85,7 @@ export default function NewWinScreen() {
           entryType="faithfulness"
           entryDate={toLocalDateString(new Date())}
           onStructured={handleStructured}
-          hasExistingInput={
-            content.trim().length > 0 || theme.trim().length > 0
-          }
+          hasExistingInput={hasTypedEntryContent([content, theme])}
         />
 
         <View style={styles.field}>

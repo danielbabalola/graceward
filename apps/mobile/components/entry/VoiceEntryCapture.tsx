@@ -75,7 +75,9 @@ export function VoiceEntryCapture({
   const [phase, setPhase] = useState<Phase>("capture");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Guards against duplicate uploads from double taps.
+  // Guards the whole "use this recording" interaction (replace prompt, consent
+  // prompt, and upload) so rapid double taps can never open duplicate prompts
+  // or fire duplicate uploads. Held until the interaction fully settles.
   const inFlightRef = useRef(false);
 
   async function runStructuring(uri: string) {
@@ -88,6 +90,8 @@ export function VoiceEntryCapture({
         entryType,
         entryDate,
       });
+      // Only a successful structuring touches the form fields — a failure
+      // never overwrites or clears what the user has typed.
       onStructured(result);
       // The recording has served its purpose; discard it from this device.
       recorder.discard();
@@ -103,35 +107,14 @@ export function VoiceEntryCapture({
     }
   }
 
-  function handleUseRecording() {
-    if (!previewUri || inFlightRef.current) {
-      return;
-    }
-    if (hasExistingInput) {
-      Alert.alert(
-        "Replace what you've entered?",
-        "Using this recording will fill in the fields from what you said, replacing anything you've already typed.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Continue", onPress: () => beginUpload(previewUri) },
-        ],
-      );
-      return;
-    }
-    beginUpload(previewUri);
-  }
-
-  function beginUpload(uri: string) {
-    if (inFlightRef.current) {
-      return;
-    }
-    inFlightRef.current = true;
-    const release = () => {
-      inFlightRef.current = false;
-    };
-
+  /**
+   * Runs the consent gate, then (only on confirm) uploads and structures.
+   * `release` frees the in-flight guard once the interaction settles, including
+   * when the user cancels or dismisses the notice (so nothing is uploaded).
+   */
+  function confirmConsentThenStructure(uri: string, release: () => void) {
     void (async () => {
-      let acknowledged: boolean;
+      let acknowledged = false;
       try {
         acknowledged = await hasAcknowledgedVoiceEntryConsent();
       } catch {
@@ -169,6 +152,46 @@ export function VoiceEntryCapture({
         { cancelable: true, onDismiss: release },
       );
     })();
+  }
+
+  function startUpload(uri: string) {
+    if (inFlightRef.current) {
+      return;
+    }
+    inFlightRef.current = true;
+    confirmConsentThenStructure(uri, () => {
+      inFlightRef.current = false;
+    });
+  }
+
+  function handleUseRecording() {
+    if (!previewUri || inFlightRef.current) {
+      return;
+    }
+    // When the user has already typed something, confirm before replacing it.
+    // Hold the guard across the confirm + consent prompts so a second tap can't
+    // stack another prompt or kick off a parallel upload.
+    if (hasExistingInput) {
+      inFlightRef.current = true;
+      const release = () => {
+        inFlightRef.current = false;
+      };
+      const uri = previewUri;
+      Alert.alert(
+        "Replace what you've entered?",
+        "Using this recording will fill in the fields from what you said, replacing anything you've already typed.",
+        [
+          { text: "Cancel", style: "cancel", onPress: release },
+          {
+            text: "Continue",
+            onPress: () => confirmConsentThenStructure(uri, release),
+          },
+        ],
+        { cancelable: true, onDismiss: release },
+      );
+      return;
+    }
+    startUpload(previewUri);
   }
 
   function collapse() {
@@ -262,10 +285,13 @@ export function VoiceEntryCapture({
           <Text style={styles.body}>
             {errorMessage ?? "Something went wrong. Please try again."}
           </Text>
+          <Text style={styles.hint}>
+            Nothing you typed was changed, and your recording is still here.
+          </Text>
           {previewUri ? (
             <Button
               label="Try again"
-              onPress={() => beginUpload(previewUri)}
+              onPress={() => startUpload(previewUri)}
               style={styles.action}
             />
           ) : null}

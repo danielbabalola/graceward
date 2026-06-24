@@ -14,28 +14,44 @@ policy. It is **not** finished legal text and must be reviewed before launch.
   Only when the user explicitly taps through and consents, the chosen reflection
   text is sent to the Graceward API, which calls the AI provider server-side.
   Nothing is sent in the background or automatically.
-- **Voice transcription is manual and user-initiated.** Audio is recorded and
-  played back on-device. A recording is transcribed only when the user taps
-  "Transcribe this reflection" and confirms a separate consent notice; only that
-  selected recording is sent to the Graceward API, which calls the transcription
-  provider server-side. The transcript is saved locally in the journal entry's
-  text (editable) and transcribing does not delete the original audio. AI
-  reflection on a transcribed voice entry uses the transcript text only — never
-  the raw audio. Nothing is transcribed automatically or in the background.
+- **Journal voice transcription is manual and user-initiated.** Audio is
+  recorded and played back on-device. A reflection recording is transcribed only
+  when the user taps "Transcribe this reflection" and confirms a separate consent
+  notice; only that selected recording is sent to the Graceward API, which calls
+  the transcription provider server-side. The transcript is saved locally in the
+  journal entry's text (editable) and transcribing does not delete the original
+  audio. AI reflection on a transcribed voice entry uses the transcript text
+  only — never the raw audio. Nothing is transcribed automatically or in the
+  background.
+- **Structured voice entry creation is manual and user-initiated, and its audio
+  is discarded.** On the prayer/gratitude/faithfulness/lesson create screens the
+  user can choose to speak instead of type. Only when the user taps "Use this
+  recording" and confirms a separate consent notice is that selected recording
+  sent to the Graceward API (`/ai/structure-voice-entry`), which transcribes it
+  and organizes it into the entry's fields server-side. The structured text is
+  returned for the user to review and save; the user can edit before saving.
+  Unlike a journal recording, this audio is **not** retained on-device — it is
+  discarded once the entry has been prepared — and the server keeps no copy of
+  the audio or transcript beyond the request. Avoid any "audio never leaves the
+  device" claim: selected audio is sent for the voice actions the user chooses.
 - **Export excludes raw audio files.** "Export my data" produces a JSON snapshot
-  of local content plus audio *metadata only* — no raw audio bytes, and AI
-  suggestion entries are metadata only. Once a voice reflection is transcribed,
-  the transcript is part of that entry's journal text and is exported as such.
-  The OS share sheet keeps sharing under the user's control.
+  of local content plus journal audio *metadata only* — no raw audio bytes, and
+  AI suggestion entries are metadata only. Recordings used to create structured
+  voice entries are discarded and are never part of the export. Once a voice
+  reflection is transcribed, the transcript is part of that entry's journal text
+  and is exported as such. The OS share sheet keeps sharing under the user's
+  control.
 - **Delete local data clears local content, audio, and preferences.** "Delete"
   permanently removes all local content rows (including saved transcripts within
   journal text) and on-device audio files, and resets preferences (including the
-  AI reflection and voice transcription consent acknowledgements). It cannot be
-  undone.
+  AI reflection, voice transcription, and voice-entry consent acknowledgements).
+  It cannot be undone.
 
 To verify against the labels: review App Store data categories as User Content
-and Audio Data; the MVP collects no Identifiers, Usage, or Diagnostics data.
-Do not overclaim privacy and do not present this draft as a final policy.
+and Audio Data (audio is sent off-device for journal transcription and for
+structured voice entry creation when the user chooses those actions); the MVP
+collects no Identifiers, Usage, or Diagnostics data. Do not overclaim privacy
+and do not present this draft as a final policy.
 
 ## Security Principle
 

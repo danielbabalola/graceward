@@ -11,18 +11,24 @@ try {
 
 const app = buildApp();
 
-// Production safety guardrail. The AI endpoint currently has no auth or
-// subscription/entitlement strategy, so in production it would be an open,
-// unauthenticated, paid AI endpoint protected only by IP rate limiting. Warn
+// Production safety guardrail. The AI endpoints currently have no auth or
+// subscription/entitlement strategy, so in production they would be open,
+// unauthenticated, paid AI endpoints protected only by IP rate limiting. Warn
 // loudly on startup (never blocking, never logging secrets) so this can't ship
-// silently. Remove once real auth/entitlements land.
+// silently. Keep this list in sync with every paid AI route in app.ts. Remove
+// once real auth/entitlements land.
 if ((process.env.NODE_ENV ?? "").toLowerCase() === "production") {
+  const paidAiEndpoints = [
+    "/ai/analyze-reflection",
+    "/ai/transcribe-reflection",
+    "/ai/structure-voice-entry",
+  ];
   app.log.warn(
     {
       category: "PRODUCTION_SAFETY",
-      endpoints: ["/ai/analyze-reflection", "/ai/transcribe-reflection"],
+      endpoints: paidAiEndpoints,
     },
-    "AI endpoints have no auth or subscription enforcement yet; they are protected only by in-memory IP rate limiting. Do not treat this as production-ready access control.",
+    `All ${paidAiEndpoints.length} paid AI endpoints (${paidAiEndpoints.join(", ")}) have no auth or subscription enforcement yet; they are protected only by in-memory IP rate limiting. Do not treat this as production-ready access control.`,
   );
 }
 

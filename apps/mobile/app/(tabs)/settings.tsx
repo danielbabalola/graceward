@@ -10,8 +10,10 @@ import { SettingsRow } from "@/components/ui/SettingsRow";
 import {
   deleteAllLocalData,
   hasAcknowledgedAiReflectionConsent,
+  hasAcknowledgedVoiceEntryConsent,
   hasAcknowledgedVoiceTranscriptionConsent,
   resetAiReflectionConsent,
+  resetVoiceEntryConsent,
   resetVoiceTranscriptionConsent,
 } from "@/lib/db";
 import { getDiagnosticInfo } from "@/lib/app-info";
@@ -38,6 +40,8 @@ export default function SettingsScreen() {
   const [consentState, setConsentState] = useState<ConsentState>("loading");
   const [transcriptionConsentState, setTranscriptionConsentState] =
     useState<ConsentState>("loading");
+  const [voiceEntryConsentState, setVoiceEntryConsentState] =
+    useState<ConsentState>("loading");
   const [helpMessage, setHelpMessage] = useState<HelpMessage>(null);
 
   // Read once for the About display. Handlers re-read fresh so the diagnostics
@@ -57,10 +61,12 @@ export default function SettingsScreen() {
       let active = true;
       (async () => {
         try {
-          const [aiAcknowledged, transcriptionAcknowledged] = await Promise.all([
-            hasAcknowledgedAiReflectionConsent(),
-            hasAcknowledgedVoiceTranscriptionConsent(),
-          ]);
+          const [aiAcknowledged, transcriptionAcknowledged, voiceEntryAcknowledged] =
+            await Promise.all([
+              hasAcknowledgedAiReflectionConsent(),
+              hasAcknowledgedVoiceTranscriptionConsent(),
+              hasAcknowledgedVoiceEntryConsent(),
+            ]);
           if (active) {
             setConsentState(
               aiAcknowledged ? "acknowledged" : "not-acknowledged",
@@ -68,12 +74,16 @@ export default function SettingsScreen() {
             setTranscriptionConsentState(
               transcriptionAcknowledged ? "acknowledged" : "not-acknowledged",
             );
+            setVoiceEntryConsentState(
+              voiceEntryAcknowledged ? "acknowledged" : "not-acknowledged",
+            );
           }
         } catch {
           // Treat a read failure as not acknowledged so the notices still show.
           if (active) {
             setConsentState("not-acknowledged");
             setTranscriptionConsentState("not-acknowledged");
+            setVoiceEntryConsentState("not-acknowledged");
           }
         }
       })();
@@ -102,6 +112,18 @@ export default function SettingsScreen() {
     } catch (error: unknown) {
       console.warn(
         "Failed to reset voice transcription consent notice:",
+        error instanceof Error ? error.message : "unknown error",
+      );
+    }
+  }
+
+  async function handleResetVoiceEntryConsent() {
+    try {
+      await resetVoiceEntryConsent();
+      setVoiceEntryConsentState("not-acknowledged");
+    } catch (error: unknown) {
+      console.warn(
+        "Failed to reset voice entry consent notice:",
         error instanceof Error ? error.message : "unknown error",
       );
     }
@@ -168,6 +190,7 @@ export default function SettingsScreen() {
       // state here without waiting for a refocus.
       setConsentState("not-acknowledged");
       setTranscriptionConsentState("not-acknowledged");
+      setVoiceEntryConsentState("not-acknowledged");
       setDeleteState("done");
     } catch (error: unknown) {
       console.warn(
@@ -251,15 +274,15 @@ export default function SettingsScreen() {
       <Section title="Privacy & Local Data">
         <SettingsRow
           title="Saved on this device"
-          description="Your reflections, prayers, gratitudes, and faithfulness moments are stored locally on this device."
+          description="Your reflections, prayers, gratitudes, faithfulness moments, lessons, and voice recordings are stored locally on this device."
         />
         <SettingsRow
-          title="Voice stays local until you choose otherwise"
-          description="Voice recordings are kept on this device. A recording is only sent anywhere if you choose to transcribe it."
+          title="Recordings stay on this device until you choose a voice action"
+          description="Your voice recordings are kept on this device. A recording is only sent anywhere when you choose a voice AI action — transcribing a reflection, or speaking to create a prayer, gratitude, faithfulness moment, or lesson."
         />
         <SettingsRow
           title="Only what you choose leaves your device"
-          description="Your data stays on this device, except the reflections you explicitly send for AI analysis and the voice recordings you explicitly choose to transcribe. Sync and backup are not enabled."
+          description="Your content stays on this device, except what you explicitly send: the reflection text you send for AI analysis, and the audio you send when you transcribe a reflection or speak to create an entry. Sync and backup are not enabled."
         />
         <SettingsRow
           title="If you remove the app"
@@ -269,24 +292,24 @@ export default function SettingsScreen() {
 
       <Section title="Audio Retention">
         <SettingsRow
-          title="Kept on this device"
-          description="Voice recordings remain on this device after you save them."
+          title="Journal recordings are kept on this device"
+          description="When you record a voice reflection, that recording is saved on this device so you can play it back."
         />
         <SettingsRow
-          title="Voice transcription is manual"
-          description="Voice recordings are never transcribed automatically. When you choose to transcribe one, only that selected recording is sent to Graceward's transcription service to be converted to text."
+          title="Journal transcription: audio is sent, then kept"
+          description="A voice reflection is never transcribed automatically. When you choose to transcribe one, only that selected recording is sent to Graceward's transcription service to be converted to text. The transcript is saved into that journal entry, and your original recording stays on this device — transcribing never deletes it."
         />
         <SettingsRow
-          title="Transcribing keeps your audio"
-          description="Transcribing a recording does not delete it. Your original audio stays on this device after the transcript is created."
+          title="Speaking to create an entry: audio is sent, then discarded"
+          description="When you speak to create a prayer, gratitude, faithfulness moment, or lesson, that recording is sent to Graceward to turn into text and organize into the entry's fields. You review and save the text. The recording isn't kept afterward — it's discarded once the entry has been prepared, and it isn't included in your data export."
         />
         <SettingsRow
           title="Audio retention controls are coming later"
-          description="For now, recordings stay on this device until you delete them. Options to manage or automatically remove audio are coming later."
+          description="For now, journal recordings stay on this device until you delete them. Options to manage or automatically remove audio are coming later."
         />
         <SettingsRow
           title="Cloud upload"
-          description="Cloud sync and backup aren't implemented. Audio only leaves your device when you choose to transcribe a specific recording."
+          description="Cloud sync and backup aren't implemented. Audio only leaves your device when you choose to transcribe a recording or speak to create an entry."
         />
       </Section>
 
@@ -348,11 +371,15 @@ export default function SettingsScreen() {
         />
         <SettingsRow
           title="What is sent for AI"
-          description="When you choose an AI reflection, the text of that reflection is sent to Graceward's AI service. Nothing else leaves your device."
+          description="When you choose an AI reflection, the text of that reflection is sent to Graceward's AI service. Audio is sent only for the voice actions described below, and only when you choose them."
         />
         <SettingsRow
           title="Voice transcription is manual"
-          description="Voice recordings are never transcribed automatically. When you choose to transcribe one, the selected audio is sent to Graceward's transcription service, and the transcript is then eligible for AI reflection."
+          description="A voice reflection is never transcribed automatically. When you choose to transcribe one, the selected audio is sent to Graceward's transcription service, the transcript is saved into that journal entry, and it's then eligible for AI reflection."
+        />
+        <SettingsRow
+          title="Speaking to create an entry is manual"
+          description="Speaking to create a prayer, gratitude, faithfulness moment, or lesson runs only when you choose it. The selected recording is sent to Graceward to turn into text and organize into the entry's fields for you to review and save; the recording is then discarded."
         />
         <SettingsRow
           title="AI reflection privacy notice"
@@ -382,6 +409,21 @@ export default function SettingsScreen() {
             label="Reset transcription consent notice"
             variant="secondary"
             onPress={handleResetTranscriptionConsent}
+          />
+        ) : null}
+        <SettingsRow
+          title="Voice entry privacy notice"
+          description={
+            voiceEntryConsentState === "acknowledged"
+              ? "Acknowledged. The privacy notice won't show before each voice-created entry."
+              : "Not acknowledged yet. The privacy notice will show the first time you speak to create an entry."
+          }
+        />
+        {voiceEntryConsentState === "acknowledged" ? (
+          <Button
+            label="Reset voice entry consent notice"
+            variant="secondary"
+            onPress={handleResetVoiceEntryConsent}
           />
         ) : null}
         <Card

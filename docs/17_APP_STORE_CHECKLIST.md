@@ -73,29 +73,38 @@ submission. See `docs/21_PRIVACY_POLICY_DRAFT.md` for the matching narrative.
   - **No tracking:** the app does not track users across apps/sites and uses no
     analytics or advertising SDKs. Declare **"Data Not Collected"** for tracking.
 
-- **Data handled when the user initiates AI reflection (declare carefully):**
-  - **User Content** — the selected typed reflection text is sent to Graceward's
-    AI service (which calls a third-party AI provider) only when the user
-    explicitly taps and consents. Disclose as User Content used for **App
+- **Data handled when the user initiates an AI action (declare carefully):**
+  - **User Content (text)** — the selected typed reflection text is sent to
+    Graceward's AI service (which calls a third-party AI provider) only when the
+    user explicitly taps and consents. Disclose as User Content used for **App
     Functionality**, not linked to identity (there is no account), not used for
     tracking. Highlight that AI requests involve user content leaving the device
     to the app's service provider.
-  - Voice recordings (Audio Data) stay **on device**, are not transcribed, and
-    are **not** sent for AI yet — so audio is not "collected" off-device today.
-    Re-evaluate this label when transcription ships.
+  - **Audio Data** — audio **is** now sent off-device for two user-initiated,
+    consented actions: (1) transcribing a voice reflection, and (2) speaking to
+    create a prayer/gratitude/faithfulness/lesson ("structured voice entry").
+    Disclose Audio Data used for **App Functionality**, not linked to identity,
+    not used for tracking. Note that audio is sent only on explicit user action,
+    that journal-transcription audio remains on the device, and that
+    structured-voice-entry audio is **discarded** after the entry is prepared and
+    is **not** retained server-side or exported. Do **not** claim audio never
+    leaves the device.
 
 - **Local-only data (not "collected" under App Store definitions):**
-  - Reflections, prayers, gratitudes, faithfulness moments, audio, and
-    preferences live only on the device. Local storage on the user's own device
-    is generally not a disclosed "collection," but confirm against current
-    Apple guidance at submission time.
+  - Reflections, prayers, gratitudes, faithfulness moments, lessons, journal
+    audio, and preferences live on the device. Local storage on the user's own
+    device is generally not a disclosed "collection," but confirm against current
+    Apple guidance at submission time. (Audio sent off-device for the two voice
+    actions above is covered under Audio Data.)
 
 - **Action items before submission:**
   - [ ] Confirm the AI provider's data handling/retention for the User Content
-        sent, and reflect it accurately.
-  - [ ] Re-review every label if auth, cloud sync, transcription, or analytics
-        are added later.
-  - [ ] Keep labels conservative; do not overclaim privacy.
+        **and audio** sent (transcription and structured voice entry), and
+        reflect it accurately.
+  - [ ] Re-review every label if auth, cloud sync, or analytics are added later.
+  - [ ] Keep labels conservative; do not overclaim privacy (audio Data Not
+        Collected is no longer accurate now that transcription and structured
+        voice entry ship).
 
 ## Avoid
 
