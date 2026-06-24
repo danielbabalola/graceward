@@ -4,12 +4,21 @@ import type { AnalyzeReflectionResponse } from "@graceward/ai-schemas";
 import { Section } from "@/components/ui/Section";
 import { SuggestionCard, type SaveStatus } from "@/components/ai/SuggestionCard";
 import { createGratitude, createPrayerRequest, createWin } from "@/lib/db";
+import { formatEntryDate } from "@/lib/journal-display";
 import { colors, radii, shadows, spacing, typography } from "@/theme/tokens";
 
 type AiReflectionResultViewProps = {
   journalEntryId: string;
   result: AnalyzeReflectionResponse;
 };
+
+/** Splits the reflection into trimmed paragraphs for calm, readable spacing. */
+function toParagraphs(text: string): string[] {
+  return text
+    .split(/\n+/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph.length > 0);
+}
 
 /**
  * Renders AI suggestions for review. Nothing here is auto-saved — each card has
@@ -43,8 +52,18 @@ export function AiReflectionResultView({
   return (
     <View style={styles.container}>
       <View style={styles.reflectionCard}>
-        <Text style={styles.reflectionLabel}>Pastoral reflection</Text>
-        <Text style={styles.reflectionBody}>{result.pastoralReflection}</Text>
+        <Text style={styles.reflectionLabel}>A reflection to consider</Text>
+        {toParagraphs(result.pastoralReflection).map((paragraph, index) => (
+          <Text
+            key={`reflection-${index}`}
+            style={[
+              styles.reflectionBody,
+              index > 0 && styles.reflectionParagraphSpacing,
+            ]}
+          >
+            {paragraph}
+          </Text>
+        ))}
       </View>
 
       {result.safetyNote ? (
@@ -58,11 +77,17 @@ export function AiReflectionResultView({
         <Section title="Suggested prayer requests">
           {result.prayerSuggestions.map((prayer, index) => {
             const key = `prayer-${index}`;
+            const followUpAt = prayer.followUpAt ?? null;
             return (
               <SuggestionCard
                 key={key}
                 title={prayer.title}
                 description={prayer.description || undefined}
+                footnote={
+                  followUpAt
+                    ? `Follow-up: ${formatEntryDate(followUpAt)}`
+                    : undefined
+                }
                 status={statuses[key] ?? "idle"}
                 saveLabel="Save prayer request"
                 savedLabel="Saved to Prayer"
@@ -73,6 +98,7 @@ export function AiReflectionResultView({
                       description: prayer.description || null,
                       status: "active",
                       sourceJournalEntryId: journalEntryId,
+                      followUpAt,
                       syncStatus: "local_only",
                     }),
                   )
@@ -181,6 +207,10 @@ const styles = StyleSheet.create({
   reflectionBody: {
     ...typography.body,
     color: colors.primaryDeep,
+    lineHeight: 24,
+  },
+  reflectionParagraphSpacing: {
+    marginTop: spacing.sm,
   },
   safetyCard: {
     backgroundColor: colors.cardBackground,

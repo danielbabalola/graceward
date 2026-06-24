@@ -8,6 +8,7 @@ type SuggestionCardProps = {
   eyebrow?: string;
   title: string;
   description?: string;
+  footnote?: string;
   status: SaveStatus;
   saveLabel: string;
   savedLabel: string;
@@ -18,6 +19,7 @@ export function SuggestionCard({
   eyebrow,
   title,
   description,
+  footnote,
   status,
   saveLabel,
   savedLabel,
@@ -31,6 +33,7 @@ export function SuggestionCard({
       {description ? (
         <Text style={styles.description}>{description}</Text>
       ) : null}
+      {footnote ? <Text style={styles.footnote}>{footnote}</Text> : null}
       <Button
         label={saved ? savedLabel : saveLabel}
         variant="secondary"
@@ -70,6 +73,10 @@ const styles = StyleSheet.create({
   description: {
     ...typography.bodySmall,
     color: colors.textMuted,
+  },
+  footnote: {
+    ...typography.bodySmall,
+    color: colors.primaryDeep,
   },
   action: {
     marginTop: spacing.xs,

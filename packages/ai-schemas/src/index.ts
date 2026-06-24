@@ -13,8 +13,12 @@ export const REFLECTION_PROMPT_VERSION = "reflection-v1";
 /** Reasonable MVP upper bound on reflection length sent for analysis. */
 export const MAX_REFLECTION_CHARS = 8000;
 
-/** Upper bound on how many suggestions of each kind we keep from the model. */
-export const MAX_SUGGESTIONS_PER_KIND = 6;
+/**
+ * Defensive upper bound on how many suggestions of each kind we keep from the
+ * model. This is a safety clamp only — the prompt lets the actual count follow
+ * the reflection (which may legitimately be zero, one, or several).
+ */
+export const MAX_SUGGESTIONS_PER_KIND = 8;
 export const MAX_FOLLOW_UP_QUESTIONS = 5;
 
 /** Modes that AI reflection v1 supports (text reflections only). */
@@ -40,6 +44,11 @@ export type AnalyzeReflectionRequest = z.infer<
 export const prayerSuggestionSchema = z.object({
   title: z.string().min(1),
   description: z.string().default(""),
+  // Optional follow-up date (calendar date, YYYY-MM-DD) set ONLY when the
+  // reflection text itself names a time for this prayer (e.g. "by next
+  // Monday"). Resolved by the model against the entry date. Null/omitted means
+  // the user didn't specify one — never inferred or invented.
+  followUpAt: z.string().date().nullable().optional(),
 });
 export type PrayerSuggestion = z.infer<typeof prayerSuggestionSchema>;
 

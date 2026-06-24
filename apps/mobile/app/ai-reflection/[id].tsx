@@ -47,6 +47,9 @@ export default function AiReflectionScreen() {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [analysisState, setAnalysisState] = useState<AnalysisState>("idle");
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  // True while an auto "Reflect again" is pending/starting, so we show a loader
+  // instead of briefly flashing the previous (stale) result.
+  const [autoReflecting, setAutoReflecting] = useState(reflectAgain === "1");
   // Guards the one-time auto "Reflect again" triggered from journal detail.
   const autoReflectHandledRef = useRef(false);
 
@@ -123,6 +126,8 @@ export default function AiReflectionScreen() {
       if (acknowledged) {
         await handleAnalyze();
       } else {
+        // Drop the loader so the consent notice isn't shown over a spinner.
+        setAutoReflecting(false);
         showConsentNotice();
       }
     })();
@@ -140,6 +145,7 @@ export default function AiReflectionScreen() {
       return;
     }
     autoReflectHandledRef.current = true;
+    setAutoReflecting(true);
     startAnalysis();
     // startAnalysis is stable for this purpose; only re-evaluate on these inputs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -149,6 +155,8 @@ export default function AiReflectionScreen() {
     if (!entry || analysisState === "analyzing") {
       return;
     }
+    // From here the "analyzing" state drives the loader; release the auto flag.
+    setAutoReflecting(false);
     const request = buildAnalyzeRequest(entry);
     if (!request) {
       setAnalysisError("This reflection can't be analyzed.");
@@ -211,6 +219,21 @@ export default function AiReflectionScreen() {
     entry.mode,
   )} · ${inputTypeLabel(entry.inputType)}`;
 
+  // While analyzing (including an auto "Reflect again"), show a loader rather
+  // than the previous result, so the screen settles only once it's ready.
+  if (analysisState === "analyzing" || autoReflecting) {
+    return (
+      <FlowScreen title="Reflect with Graceward" subtitle={metaLine}>
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.primaryDeep} />
+          <Text style={styles.loadingHint}>
+            Reflecting… this stays between your device and Graceward&apos;s AI.
+          </Text>
+        </View>
+      </FlowScreen>
+    );
+  }
+
   if (!canAnalyzeEntry(entry)) {
     return (
       <FlowScreen title="Reflect with Graceward" subtitle={metaLine}>
@@ -250,7 +273,6 @@ export default function AiReflectionScreen() {
             label="Reflect again"
             variant="secondary"
             onPress={startAnalysis}
-            loading={analysisState === "analyzing"}
             style={styles.reflectAgain}
           />
         ) : null}
@@ -265,7 +287,7 @@ export default function AiReflectionScreen() {
     <FlowScreen title="Reflect with Graceward" subtitle={metaLine}>
       <Card
         variant="primary"
-        eyebrow="Pastoral reflection"
+        eyebrow="A reflection to consider"
         title="Let Graceward reflect with you"
         description="Graceward will gently read this reflection and offer a short pastoral reflection plus optional prayers, gratitudes, faithfulness moments, and questions. You choose what, if anything, to save."
       />
@@ -273,14 +295,8 @@ export default function AiReflectionScreen() {
       <Button
         label="Reflect with Graceward"
         onPress={startAnalysis}
-        loading={analysisState === "analyzing"}
         style={styles.action}
       />
-      {analysisState === "analyzing" ? (
-        <Text style={styles.hint}>
-          Reflecting… this stays between your device and Graceward&apos;s AI.
-        </Text>
-      ) : null}
       {analysisState === "error" && analysisError ? (
         <Text style={styles.errorText}>{analysisError}</Text>
       ) : null}
@@ -319,9 +335,11 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: spacing.md,
   },
-  hint: {
+  loadingHint: {
     ...typography.bodySmall,
     color: colors.textSubtle,
+    marginTop: spacing.md,
+    textAlign: "center",
   },
   errorText: {
     ...typography.bodySmall,
