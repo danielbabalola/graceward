@@ -5,10 +5,15 @@
     "dev:api": "pnpm --filter @graceward/api dev",
     "dev:mobile": "pnpm --filter @graceward/mobile start",
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "pnpm@9.15.9"
+  "packageManager": "pnpm@9.15.9",
+  "devDependencies": {
+    "vitest": "^4.1.9"
+  }
 }

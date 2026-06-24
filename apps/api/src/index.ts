@@ -1,6 +1,4 @@
-import Fastify from "fastify";
-import type { HealthResponse } from "@graceward/shared";
-import { registerAnalyzeReflectionRoute } from "./routes/analyze-reflection.js";
+import { buildApp } from "./app.js";
 
 // Load apps/api/.env (relative to the process cwd) when present. Uses Node's
 // built-in loader so no dotenv dependency is needed. Real environment
@@ -11,21 +9,7 @@ try {
   // No .env file found; rely on the existing process environment.
 }
 
-const app = Fastify({
-  logger: true,
-  // Keep request bodies small; the reflection text limit is enforced again by
-  // schema validation. Guards against oversized uploads.
-  bodyLimit: 256 * 1024,
-});
-
-app.get("/health", async (): Promise<HealthResponse> => {
-  return {
-    status: "ok",
-    service: "api",
-  };
-});
-
-registerAnalyzeReflectionRoute(app);
+const app = buildApp();
 
 // Production safety guardrail. The AI endpoint currently has no auth or
 // subscription/entitlement strategy, so in production it would be an open,

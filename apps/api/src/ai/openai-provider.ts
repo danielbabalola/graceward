@@ -170,8 +170,9 @@ function extractMessageContent(payload: unknown): string | null {
   return typeof content === "string" ? content : null;
 }
 
-/** Defensive cap on list sizes regardless of what the model returns. */
-function clampResult(
+/** Defensive cap on list sizes regardless of what the model returns. Exported
+ * for unit testing the caps in isolation. */
+export function clampResult(
   result: AnalyzeReflectionResponse,
 ): AnalyzeReflectionResponse {
   return {
