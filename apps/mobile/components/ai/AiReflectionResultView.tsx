@@ -4,7 +4,6 @@ import type { AnalyzeReflectionResponse } from "@graceward/ai-schemas";
 import { Section } from "@/components/ui/Section";
 import { SuggestionCard, type SaveStatus } from "@/components/ai/SuggestionCard";
 import { createGratitude, createPrayerRequest, createWin } from "@/lib/db";
-import { formatEntryDate } from "@/lib/journal-display";
 import { colors, radii, shadows, spacing, typography } from "@/theme/tokens";
 
 type AiReflectionResultViewProps = {
@@ -77,28 +76,29 @@ export function AiReflectionResultView({
         <Section title="Suggested prayer requests">
           {result.prayerSuggestions.map((prayer, index) => {
             const key = `prayer-${index}`;
-            const followUpAt = prayer.followUpAt ?? null;
             return (
               <SuggestionCard
                 key={key}
-                title={prayer.title}
-                description={prayer.description || undefined}
-                footnote={
-                  followUpAt
-                    ? `Follow-up: ${formatEntryDate(followUpAt)}`
-                    : undefined
-                }
+                titleLabel="Prayer focus"
+                descriptionLabel="Details"
+                supportsFollowUp
+                initial={{
+                  title: prayer.title,
+                  description: prayer.description ?? "",
+                  tag: "",
+                  followUpAt: prayer.followUpAt ?? null,
+                }}
                 status={statuses[key] ?? "idle"}
                 saveLabel="Save prayer request"
                 savedLabel="Saved to Prayer"
-                onSave={() =>
+                onSave={(draft) =>
                   void runSave(key, () =>
                     createPrayerRequest({
-                      title: prayer.title,
-                      description: prayer.description || null,
+                      title: draft.title,
+                      description: draft.description || null,
                       status: "active",
                       sourceJournalEntryId: journalEntryId,
-                      followUpAt,
+                      followUpAt: draft.followUpAt,
                       syncStatus: "local_only",
                     }),
                   )
@@ -116,16 +116,23 @@ export function AiReflectionResultView({
             return (
               <SuggestionCard
                 key={key}
-                eyebrow={gratitude.category}
-                title={gratitude.content}
+                titleLabel="Gratitude"
+                titleMultiline
+                tagLabel="Category"
+                initial={{
+                  title: gratitude.content,
+                  description: "",
+                  tag: gratitude.category ?? "",
+                  followUpAt: null,
+                }}
                 status={statuses[key] ?? "idle"}
                 saveLabel="Save gratitude"
                 savedLabel="Saved to Gratitude"
-                onSave={() =>
+                onSave={(draft) =>
                   void runSave(key, () =>
                     createGratitude({
-                      content: gratitude.content,
-                      category: gratitude.category ?? null,
+                      content: draft.title,
+                      category: draft.tag || null,
                       journalEntryId,
                       syncStatus: "local_only",
                     }),
@@ -144,16 +151,23 @@ export function AiReflectionResultView({
             return (
               <SuggestionCard
                 key={key}
-                eyebrow={moment.faithfulnessTheme}
-                title={moment.content}
+                titleLabel="Faithfulness moment"
+                titleMultiline
+                tagLabel="Theme"
+                initial={{
+                  title: moment.content,
+                  description: "",
+                  tag: moment.faithfulnessTheme ?? "",
+                  followUpAt: null,
+                }}
                 status={statuses[key] ?? "idle"}
                 saveLabel="Save faithfulness moment"
                 savedLabel="Saved to Faithfulness"
-                onSave={() =>
+                onSave={(draft) =>
                   void runSave(key, () =>
                     createWin({
-                      content: moment.content,
-                      faithfulnessTheme: moment.faithfulnessTheme ?? null,
+                      content: draft.title,
+                      faithfulnessTheme: draft.tag || null,
                       journalEntryId,
                       syncStatus: "local_only",
                     }),

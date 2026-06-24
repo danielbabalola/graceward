@@ -227,7 +227,8 @@ export default function AiReflectionScreen() {
         <View style={styles.centered}>
           <ActivityIndicator color={colors.primaryDeep} />
           <Text style={styles.loadingHint}>
-            Reflecting… this stays between your device and Graceward&apos;s AI.
+            Reflecting… this reflection has been sent to Graceward&apos;s AI for
+            analysis.
           </Text>
         </View>
       </FlowScreen>

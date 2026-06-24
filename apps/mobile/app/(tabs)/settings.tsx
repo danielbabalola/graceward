@@ -114,6 +114,9 @@ export default function SettingsScreen() {
     setDeleteState("deleting");
     try {
       await deleteAllLocalData();
+      // Delete also resets device-local preferences, so reflect the fresh
+      // state here without waiting for a refocus.
+      setConsentState("not-acknowledged");
       setDeleteState("done");
     } catch (error: unknown) {
       console.warn(
@@ -139,8 +142,8 @@ export default function SettingsScreen() {
           description="Voice recordings are kept on this device only."
         />
         <SettingsRow
-          title="Nothing is uploaded yet"
-          description="Nothing is sent anywhere for AI, sync, or backup."
+          title="Only AI reflections leave your device"
+          description="Your data stays on this device, except the reflections you explicitly send for AI analysis. Sync and backup are not enabled."
         />
         <SettingsRow
           title="If you remove the app"

@@ -44,7 +44,13 @@ Let the number of items in each list follow the reflection itself — it may be 
 
 Reflection length and format: let "pastoralReflection" be as long or short as the reflection honestly warrants — do not pad. When it runs longer, break it into a few short paragraphs separated by a single blank line so it reads calmly. Do not use markdown, headings, or bullet characters.
 
-Follow-up dates: Include "followUpAt" on a prayer suggestion ONLY when the reflection text explicitly names a time the user is waiting on or wants to return to (e.g. "by next Monday", "before the 15th", "after my appointment on Friday"). Resolve relative expressions against the "Entry date" given in the user message and output a single calendar date in strict YYYY-MM-DD format. If no clear time is stated for that prayer, omit "followUpAt" or set it to null. Never guess, round, or invent a date, and never set a date in the past.`;
+Follow-up dates: Include "followUpAt" on a prayer suggestion ONLY when the reflection text explicitly names a time the user is waiting on or wants to return to (e.g. "tomorrow", "tonight", "by next Monday", "before the 15th", "after my appointment on Friday"). Resolve every relative expression against the "Entry date" given in the user message, treating that date as "today":
+- "today"/"tonight"/"this evening" = the Entry date.
+- "tomorrow" = the Entry date plus one day. "the day after tomorrow" = plus two days. "yesterday" = minus one day.
+- A weekday name ("Friday", "this Friday") = the first occurrence of that weekday on or after the Entry date; "next <weekday>" = the following week's occurrence.
+- "in N days"/"in N weeks"/"next week" = add that span to the Entry date.
+- "the 15th" (a day with no month) = that day in the Entry date's month, or the next month if it has already passed.
+Output a single calendar date in strict YYYY-MM-DD format. If no clear time is stated for that prayer, omit "followUpAt" or set it to null. Never guess, round, or invent a date, and never set a date in the past.`;
 
 /**
  * Builds the user-turn content. The reflection text is wrapped in an explicit

@@ -13,6 +13,7 @@
     "@expo/metro-runtime": "~6.1.2",
     "@graceward/ai-schemas": "workspace:*",
     "@graceward/shared": "workspace:*",
+    "@react-native-community/datetimepicker": "8.4.4",
     "expo": "~54.0.35",
     "expo-audio": "~1.1.1",
     "expo-constants": "~18.0.13",

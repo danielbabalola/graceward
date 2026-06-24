@@ -55,13 +55,26 @@ export class ReflectionApiError extends Error {
   }
 }
 
+/**
+ * Client-side request timeout. Sits a little above the server's default
+ * provider timeout (30s) so a real server-side AI_TIMEOUT is usually surfaced
+ * with its specific copy, and this abort only trips when the network itself is
+ * unresponsive.
+ */
+const REQUEST_TIMEOUT_MS = 35_000;
+
 const MESSAGES: Record<string, string> = {
   NETWORK_ERROR:
     "Could not reach Graceward. Check your connection and try again.",
+  TIMEOUT: "This is taking longer than expected. Please try again in a moment.",
+  AI_TIMEOUT:
+    "Graceward's reflection took too long this time. Please try again in a moment.",
+  RATE_LIMITED:
+    "You've reflected a lot just now. Please wait a moment, then try again.",
   AI_NOT_CONFIGURED:
     "Graceward's AI service isn't set up yet. Please try again later.",
   AI_PROVIDER_ERROR:
-    "Graceward's AI service had trouble responding. Please try again.",
+    "Graceward's AI service is unavailable right now. Please try again.",
   AI_INVALID_RESPONSE:
     "Graceward couldn't make sense of the reflection just now. Please try again.",
   INVALID_REQUEST: "This reflection can't be analyzed.",
@@ -74,20 +87,30 @@ function messageForCode(code: string): string {
 /**
  * Sends a single reflection to the backend for analysis. Only called after the
  * user explicitly consents on the AI reflection screen. Throws
- * ReflectionApiError with a non-sensitive code on failure.
+ * ReflectionApiError with a non-sensitive code on failure. Aborts the request
+ * after REQUEST_TIMEOUT_MS so a hung connection surfaces calm, honest copy.
  */
 export async function analyzeReflection(
   request: AnalyzeReflectionRequest,
 ): Promise<AnalyzeReflectionResponse> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}/ai/analyze-reflection`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
+      signal: controller.signal,
     });
   } catch {
-    throw new ReflectionApiError("NETWORK_ERROR", messageForCode("NETWORK_ERROR"));
+    // An aborted request is a client-side timeout; anything else is a generic
+    // connectivity failure. Neither exposes server internals.
+    const code = controller.signal.aborted ? "TIMEOUT" : "NETWORK_ERROR";
+    throw new ReflectionApiError(code, messageForCode(code));
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (!response.ok) {

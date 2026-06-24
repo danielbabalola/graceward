@@ -27,6 +27,18 @@ app.get("/health", async (): Promise<HealthResponse> => {
 
 registerAnalyzeReflectionRoute(app);
 
+// Production safety guardrail. The AI endpoint currently has no auth or
+// subscription/entitlement strategy, so in production it would be an open,
+// unauthenticated, paid AI endpoint protected only by IP rate limiting. Warn
+// loudly on startup (never blocking, never logging secrets) so this can't ship
+// silently. Remove once real auth/entitlements land.
+if ((process.env.NODE_ENV ?? "").toLowerCase() === "production") {
+  app.log.warn(
+    { category: "PRODUCTION_SAFETY", endpoint: "/ai/analyze-reflection" },
+    "AI endpoint has no auth or subscription enforcement yet; it is protected only by in-memory IP rate limiting. Do not treat this as production-ready access control.",
+  );
+}
+
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
 

@@ -9,6 +9,17 @@ import { AiError, type ReflectionAnalysisProvider } from "./types.js";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = "gpt-5.4-mini";
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+/**
+ * Resolves the provider timeout from AI_PROVIDER_TIMEOUT_MS, falling back to
+ * 30s. Ignores non-positive or non-numeric values so a bad env var can't
+ * disable the timeout entirely.
+ */
+function resolveTimeoutMs(): number {
+  const raw = Number(process.env.AI_PROVIDER_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_TIMEOUT_MS;
+}
 
 /**
  * OpenAI-backed reflection analysis provider. Reads the API key from the
@@ -49,6 +60,12 @@ export function createOpenAiProvider(): ReflectionAnalysisProvider {
         requestBody.reasoning_effort = reasoningEffort;
       }
 
+      // Bound the provider call so a slow/hung upstream can't hold the request
+      // open indefinitely. AbortController fires after the resolved timeout.
+      const controller = new AbortController();
+      const timeoutMs = resolveTimeoutMs();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
       let response: Response;
       try {
         response = await fetch(OPENAI_URL, {
@@ -58,13 +75,25 @@ export function createOpenAiProvider(): ReflectionAnalysisProvider {
             Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify(requestBody),
+          signal: controller.signal,
         });
       } catch {
+        // Distinguish a timeout (we aborted) from a generic connectivity error.
+        // Neither path surfaces provider internals, secrets, or content.
+        if (controller.signal.aborted) {
+          throw new AiError(
+            "AI_TIMEOUT",
+            504,
+            "The AI service took too long to respond.",
+          );
+        }
         throw new AiError(
           "AI_PROVIDER_ERROR",
           502,
           "Could not reach the AI provider.",
         );
+      } finally {
+        clearTimeout(timeout);
       }
 
       if (!response.ok) {
