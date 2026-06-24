@@ -1,30 +1,34 @@
+import { useState } from "react";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import {
-  VoiceRecorder,
-  type VoiceRecording,
-} from "@/components/reflection/VoiceRecorder";
-import { createAudioAsset, createJournalEntry } from "@/lib/db";
+  GuidedVoiceRecorder,
+  type GuidedVoiceRecording,
+} from "@/components/reflection/GuidedVoiceRecorder";
+import { ReflectionDateSelector } from "@/components/reflection/ReflectionDateSelector";
+import { createAudioAsset, createJournalEntry, toLocalDateString } from "@/lib/db";
 import { persistRecording } from "@/lib/audio-storage";
+import { buildGuidedVoicePayload } from "@/lib/guided-payload";
 import {
   guidedModeConfigs,
   isGuidedMode,
   type GuidedMode,
 } from "@/lib/reflection-flow";
-import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 const speakIntros: Record<GuidedMode, string> = {
   regular:
-    "When you're ready, record one continuous reflection. Let the prompts above guide you — there's no need to answer them in order.",
+    "When you're ready, record one continuous reflection. Move to the next prompt whenever you like — the recording keeps going.",
   lament:
     "When you're ready, speak freely into one recording. Move through the prompts at your own pace. There is no rush.",
   rejoice:
-    "When you're ready, record one continuous reflection. Let the prompts above help you notice God's specific kindness.",
+    "When you're ready, record one continuous reflection. Let each prompt help you notice God's specific kindness.",
 };
 
 export default function GuidedSpeakScreen() {
   const { mode } = useLocalSearchParams<{ mode: string }>();
+  const [entryDate, setEntryDate] = useState(() =>
+    toLocalDateString(new Date()),
+  );
 
   if (!mode || !isGuidedMode(mode)) {
     return <Redirect href="/reflection/guided/mode" />;
@@ -32,13 +36,21 @@ export default function GuidedSpeakScreen() {
 
   const config = guidedModeConfigs[mode];
 
-  async function handleSave({ uri, durationSeconds }: VoiceRecording) {
+  async function handleSave({
+    uri,
+    durationSeconds,
+    markers,
+  }: GuidedVoiceRecording) {
     const entry = await createJournalEntry({
       reflectionPath: "guided",
       mode: config.mode,
       inputType: "voice",
       rawText: null,
       title: config.fallbackTitle,
+      entryDate,
+      structuredPayloadJson: JSON.stringify(
+        buildGuidedVoicePayload(config, markers),
+      ),
       status: "saved",
       syncStatus: "local_only",
     });
@@ -61,74 +73,14 @@ export default function GuidedSpeakScreen() {
 
   return (
     <FlowScreen title={config.title} subtitle={config.helper}>
-      {config.note ? (
-        <View
-          style={[
-            styles.note,
-            config.accentColor ? { borderLeftColor: config.accentColor } : null,
-          ]}
-        >
-          <Text style={styles.noteText}>{config.note}</Text>
-        </View>
-      ) : null}
-
-      <View style={styles.promptsCard}>
-        <Text style={styles.promptsHeading}>Let these guide your reflection</Text>
-        {config.prompts.map((prompt) => (
-          <View key={prompt.id} style={styles.promptRow}>
-            <Text style={styles.promptBullet}>·</Text>
-            <Text style={styles.promptLabel}>{prompt.label}</Text>
-          </View>
-        ))}
-      </View>
-
-      <VoiceRecorder onSave={handleSave} idleBody={speakIntros[config.mode]} />
+      <GuidedVoiceRecorder
+        config={config}
+        idleBody={speakIntros[config.mode]}
+        onSave={handleSave}
+        header={
+          <ReflectionDateSelector value={entryDate} onChange={setEntryDate} />
+        }
+      />
     </FlowScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  note: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.lamentAccent,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  noteText: {
-    ...typography.bodySmall,
-    color: colors.textMuted,
-    fontStyle: "italic",
-  },
-  promptsCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    gap: spacing.sm,
-  },
-  promptsHeading: {
-    ...typography.caption,
-    color: colors.textSubtle,
-    textTransform: "uppercase",
-    marginBottom: spacing.xs,
-  },
-  promptRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  promptBullet: {
-    ...typography.body,
-    color: colors.textSubtle,
-  },
-  promptLabel: {
-    ...typography.body,
-    color: colors.text,
-    flex: 1,
-  },
-});

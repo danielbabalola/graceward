@@ -41,4 +41,4 @@ export {
   updateWin,
   softDeleteWin,
 } from "./wins";
-export { deriveTitle, toLocalDateString } from "./helpers";
+export { deriveTitle, isFutureLocalDate, toLocalDateString } from "./helpers";

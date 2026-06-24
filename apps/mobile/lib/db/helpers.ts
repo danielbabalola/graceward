@@ -7,6 +7,18 @@ export function toLocalDateString(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * True when `dateString` (YYYY-MM-DD) is strictly after `today`. The ISO date
+ * format sorts lexically the same as chronologically, so a plain string
+ * comparison is correct and avoids timezone surprises.
+ */
+export function isFutureLocalDate(
+  dateString: string,
+  today: string = toLocalDateString(new Date()),
+): boolean {
+  return dateString > today;
+}
+
 export function deriveTitle(rawText: string): string | null {
   const firstLine = rawText
     .split("\n")

@@ -130,6 +130,16 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 5,
+    up: async (db) => {
+      // Adds optional structured guided payload to journal entries. Existing
+      // rows keep NULL and continue to render/edit via raw_text as before.
+      await db.execAsync(`
+        ALTER TABLE journal_entries ADD COLUMN structured_payload_json TEXT;
+      `);
+    },
+  },
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {

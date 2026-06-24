@@ -44,6 +44,7 @@ export type JournalEntry = {
   inputType: JournalInputType;
   rawText: string | null;
   title: string | null;
+  structuredPayloadJson: string | null;
   status: JournalStatus;
   syncStatus: SyncStatus;
   createdAt: string;
@@ -57,6 +58,7 @@ export type CreateJournalEntryInput = {
   inputType: JournalInputType;
   rawText?: string | null;
   title?: string | null;
+  structuredPayloadJson?: string | null;
   entryDate?: string;
   status?: JournalStatus;
   syncStatus?: SyncStatus;

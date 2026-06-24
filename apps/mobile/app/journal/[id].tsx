@@ -13,6 +13,7 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import type { AudioAsset, JournalEntry } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
+import { GuidedPromptEditor } from "@/components/reflection/GuidedPromptEditor";
 import { AudioPlayback } from "@/components/journal/AudioPlayback";
 import {
   getAudioAssetByEntryId,
@@ -28,6 +29,20 @@ import {
   statusLabel,
   syncStatusLabel,
 } from "@/lib/journal-display";
+import {
+  buildGuidedTextPayload,
+  compileGuidedReflectionFromPayload,
+  configForPayload,
+  parseStructuredPayload,
+  payloadToAnswers,
+  type GuidedStructuredPayload,
+  type GuidedTextPayload,
+  type GuidedVoicePayload,
+} from "@/lib/guided-payload";
+import {
+  deriveGuidedTitle,
+  type GuidedAnswers,
+} from "@/lib/reflection-flow";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error" | "not-found";
@@ -40,6 +55,7 @@ export default function JournalEntryDetailScreen() {
   const [loadState, setLoadState] = useState<LoadState>("loading");
 
   const [editing, setEditing] = useState(false);
+  const [structuredEditing, setStructuredEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -131,6 +147,26 @@ export default function JournalEntryDetailScreen() {
     }
   }
 
+  async function handleStructuredSave(
+    payload: GuidedTextPayload,
+    answers: GuidedAnswers,
+  ) {
+    if (!entry) {
+      return;
+    }
+    const config = configForPayload(payload);
+    const nextPayload = buildGuidedTextPayload(config, answers);
+    const updated = await updateJournalEntry(entry.id, {
+      rawText: compileGuidedReflectionFromPayload(nextPayload),
+      title: deriveGuidedTitle(config, answers),
+      structuredPayloadJson: JSON.stringify(nextPayload),
+    });
+    if (updated) {
+      setEntry(updated);
+    }
+    setStructuredEditing(false);
+  }
+
   function confirmDelete() {
     if (!entry) {
       return;
@@ -202,6 +238,14 @@ export default function JournalEntryDetailScreen() {
     );
   }
 
+  const payload: GuidedStructuredPayload | null = parseStructuredPayload(
+    entry.structuredPayloadJson,
+  );
+  const guidedTextPayload: GuidedTextPayload | null =
+    payload && payload.inputType === "text" ? payload : null;
+  const guidedVoicePayload: GuidedVoicePayload | null =
+    payload && payload.inputType === "voice" ? payload : null;
+
   const metaLine = `${formatEntryDate(entry.entryDate)} · ${modeLabel(
     entry.mode,
   )} · ${inputTypeLabel(entry.inputType)}`;
@@ -212,6 +256,17 @@ export default function JournalEntryDetailScreen() {
 
     return (
       <FlowScreen title={entry.title ?? "Voice reflection"} subtitle={metaLine}>
+        {guidedVoicePayload && guidedVoicePayload.prompts.length > 0 ? (
+          <View style={styles.promptsCard}>
+            <Text style={styles.sectionLabel}>Prompts in this reflection</Text>
+            {guidedVoicePayload.prompts.map((prompt) => (
+              <View key={prompt.id} style={styles.promptRow}>
+                <Text style={styles.promptBullet}>·</Text>
+                <Text style={styles.promptText}>{prompt.label}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
         <View style={styles.audioWrapper}>
           {audioAvailable ? (
             <AudioPlayback
@@ -245,6 +300,60 @@ export default function JournalEntryDetailScreen() {
     );
   }
 
+  // Structured guided text entry: edit via the one-prompt-at-a-time editor.
+  if (guidedTextPayload && structuredEditing) {
+    const config = configForPayload(guidedTextPayload);
+    return (
+      <FlowScreen title={config.title} subtitle="Edit your reflection">
+        <GuidedPromptEditor
+          config={config}
+          initialAnswers={payloadToAnswers(guidedTextPayload)}
+          saveLabel="Save changes"
+          onSave={(answers) => handleStructuredSave(guidedTextPayload, answers)}
+          onCancel={() => setStructuredEditing(false)}
+        />
+      </FlowScreen>
+    );
+  }
+
+  if (guidedTextPayload) {
+    const answered = guidedTextPayload.prompts.filter(
+      (prompt) => prompt.answer.trim().length > 0,
+    );
+    return (
+      <FlowScreen title={entry.title ?? "Reflection"} subtitle={metaLine}>
+        {answered.length > 0 ? (
+          answered.map((prompt) => (
+            <View key={prompt.id} style={styles.bodyCard}>
+              <Text style={styles.sectionLabel}>{prompt.label}</Text>
+              <Text style={styles.body}>{prompt.answer}</Text>
+            </View>
+          ))
+        ) : (
+          <View style={styles.bodyCard}>
+            <Text style={styles.body}>No answers recorded yet.</Text>
+          </View>
+        )}
+        <Text style={styles.privacyLine}>
+          {statusLabel(entry.status)} · {syncStatusLabel(entry.syncStatus)}
+        </Text>
+        <Button
+          label="Edit"
+          onPress={() => setStructuredEditing(true)}
+          style={styles.action}
+        />
+        <Button
+          label="Delete"
+          variant="destructive"
+          onPress={confirmDelete}
+          loading={deleting}
+          style={styles.action}
+        />
+      </FlowScreen>
+    );
+  }
+
+  // Legacy / Free Flow text entry: raw_text editing.
   return (
     <FlowScreen title={entry.title ?? "Reflection"} subtitle={metaLine}>
       <KeyboardAvoidingView
@@ -288,11 +397,7 @@ export default function JournalEntryDetailScreen() {
             <Text style={styles.privacyLine}>
               {statusLabel(entry.status)} · {syncStatusLabel(entry.syncStatus)}
             </Text>
-            <Button
-              label="Edit"
-              onPress={startEditing}
-              style={styles.action}
-            />
+            <Button label="Edit" onPress={startEditing} style={styles.action} />
             <Button
               label="Delete"
               variant="destructive"
@@ -323,6 +428,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.md,
     marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  sectionLabel: {
+    ...typography.caption,
+    color: colors.textSubtle,
+    textTransform: "uppercase",
   },
   body: {
     ...typography.body,
@@ -332,6 +443,28 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.textSubtle,
     marginBottom: spacing.lg,
+  },
+  promptsCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  promptRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  promptBullet: {
+    ...typography.body,
+    color: colors.textSubtle,
+  },
+  promptText: {
+    ...typography.body,
+    color: colors.text,
+    flex: 1,
   },
   editorWrapper: {
     backgroundColor: colors.cardBackground,

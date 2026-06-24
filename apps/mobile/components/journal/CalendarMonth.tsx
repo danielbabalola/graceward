@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   getMonthMatrix,
   monthTitle,
+  toDateString,
   WEEKDAY_LABELS,
   type CalendarCell,
 } from "@/lib/calendar";
@@ -23,6 +24,13 @@ type CalendarMonthProps = {
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onSelectDate: (dateString: string) => void;
+  /**
+   * Optional latest selectable date (YYYY-MM-DD). Days after this are shown
+   * disabled and cannot be selected, and the next-month control is disabled
+   * once the whole next month is past it. When omitted, all days are
+   * selectable (default behaviour used by the Journal calendar).
+   */
+  maxDate?: string;
 };
 
 export function CalendarMonth({
@@ -34,8 +42,14 @@ export function CalendarMonth({
   onPrevMonth,
   onNextMonth,
   onSelectDate,
+  maxDate,
 }: CalendarMonthProps) {
   const weeks = getMonthMatrix(year, monthIndex);
+  // Disable forward navigation once the first day of the next month is already
+  // beyond maxDate (i.e. the entire next month is in the future).
+  const nextMonthDisabled = maxDate
+    ? toDateString(year, monthIndex + 1, 1) > maxDate
+    : false;
 
   return (
     <View style={styles.container}>
@@ -51,9 +65,15 @@ export function CalendarMonth({
         <Text style={styles.title}>{monthTitle(year, monthIndex)}</Text>
         <Pressable
           onPress={onNextMonth}
+          disabled={nextMonthDisabled}
           accessibilityRole="button"
           accessibilityLabel="Next month"
-          style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}
+          accessibilityState={{ disabled: nextMonthDisabled }}
+          style={({ pressed }) => [
+            styles.navButton,
+            pressed && !nextMonthDisabled && styles.pressed,
+            nextMonthDisabled && styles.navButtonDisabled,
+          ]}
         >
           <Ionicons
             name="chevron-forward"
@@ -80,6 +100,9 @@ export function CalendarMonth({
               isToday={cell?.dateString === todayDate}
               isSelected={cell?.dateString === selectedDate}
               hasEntries={cell ? markedDates.has(cell.dateString) : false}
+              isDisabled={
+                cell && maxDate ? cell.dateString > maxDate : false
+              }
               onSelectDate={onSelectDate}
             />
           ))}
@@ -94,6 +117,7 @@ type DayCellProps = {
   isToday: boolean;
   isSelected: boolean;
   hasEntries: boolean;
+  isDisabled: boolean;
   onSelectDate: (dateString: string) => void;
 };
 
@@ -102,6 +126,7 @@ function DayCell({
   isToday,
   isSelected,
   hasEntries,
+  isDisabled,
   onSelectDate,
 }: DayCellProps) {
   if (!cell) {
@@ -112,13 +137,14 @@ function DayCell({
     <View style={styles.dayCell}>
       <Pressable
         onPress={() => onSelectDate(cell.dateString)}
+        disabled={isDisabled}
         accessibilityRole="button"
         accessibilityLabel={cell.dateString}
-        accessibilityState={{ selected: isSelected }}
+        accessibilityState={{ selected: isSelected, disabled: isDisabled }}
         style={({ pressed }) => [
           styles.dayButton,
           isSelected && styles.daySelected,
-          pressed && !isSelected && styles.pressed,
+          pressed && !isSelected && !isDisabled && styles.pressed,
         ]}
       >
         <Text
@@ -126,12 +152,16 @@ function DayCell({
             styles.dayNumber,
             isToday && styles.dayToday,
             isSelected && styles.dayNumberSelected,
+            isDisabled && styles.dayDisabled,
           ]}
         >
           {cell.day}
         </Text>
         <View
-          style={[styles.dot, hasEntries ? styles.dotVisible : undefined]}
+          style={[
+            styles.dot,
+            hasEntries && !isDisabled ? styles.dotVisible : undefined,
+          ]}
         />
       </Pressable>
     </View>
@@ -157,6 +187,9 @@ const styles = StyleSheet.create({
     height: touchTarget,
     alignItems: "center",
     justifyContent: "center",
+  },
+  navButtonDisabled: {
+    opacity: 0.25,
   },
   title: {
     ...typography.sectionTitle,
@@ -202,6 +235,10 @@ const styles = StyleSheet.create({
   dayNumberSelected: {
     color: colors.primaryDeep,
     fontWeight: "600",
+  },
+  dayDisabled: {
+    color: colors.textSubtle,
+    opacity: 0.4,
   },
   dot: {
     width: 5,

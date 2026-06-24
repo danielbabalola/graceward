@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -11,11 +10,16 @@ import {
 import { router } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
-import { createJournalEntry } from "@/lib/db";
+import { ReflectionDateSelector } from "@/components/reflection/ReflectionDateSelector";
+import { createJournalEntry, toLocalDateString } from "@/lib/db";
+import { handleReflectionSaveError } from "@/lib/reflection-save";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function FreeFlowTypeScreen() {
   const [text, setText] = useState("");
+  const [entryDate, setEntryDate] = useState(() =>
+    toLocalDateString(new Date()),
+  );
   const [saving, setSaving] = useState(false);
 
   const canSave = text.trim().length > 0 && !saving;
@@ -33,20 +37,13 @@ export default function FreeFlowTypeScreen() {
         mode: "free_flow",
         inputType: "text",
         rawText: trimmed,
+        entryDate,
         status: "saved",
         syncStatus: "local_only",
       });
       router.replace("/(tabs)/journal");
     } catch (error: unknown) {
-      // Never log raw reflection content — only an error category.
-      console.warn(
-        "Failed to save reflection:",
-        error instanceof Error ? error.message : "unknown error",
-      );
-      Alert.alert(
-        "Could not save",
-        "Your reflection could not be saved just now. Please try again.",
-      );
+      handleReflectionSaveError(error);
       setSaving(false);
     }
   }
@@ -59,6 +56,7 @@ export default function FreeFlowTypeScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
+        <ReflectionDateSelector value={entryDate} onChange={setEntryDate} />
         <View style={styles.editorWrapper}>
           <TextInput
             value={text}

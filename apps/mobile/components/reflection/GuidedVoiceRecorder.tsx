@@ -12,48 +12,93 @@ import { Button } from "@/components/ui/Button";
 import { AudioPlayback } from "@/components/journal/AudioPlayback";
 import { formatDuration } from "@/lib/journal-display";
 import { useVoiceRecorder } from "@/lib/use-voice-recorder";
+import type { GuidedPromptMarker } from "@/lib/guided-payload";
+import type { GuidedModeConfig } from "@/lib/reflection-flow";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
-export type VoiceRecording = {
+export type GuidedVoiceRecording = {
   uri: string;
   durationSeconds: number;
+  markers: GuidedPromptMarker[];
 };
 
-type VoiceRecorderProps = {
-  /**
-   * Persists the recording (create the journal entry + audio asset) and, on
-   * success, navigates away. Should throw on failure so the recorder can return
-   * the user to the preview state.
-   */
-  onSave: (recording: VoiceRecording) => Promise<void>;
-  /** Copy shown in the idle state before recording begins. */
+type GuidedVoiceRecorderProps = {
+  config: GuidedModeConfig;
   idleBody?: string;
+  onSave: (recording: GuidedVoiceRecording) => Promise<void>;
   /**
    * Optional content rendered above the recorder before recording starts and
    * again in the preview state (e.g. a reflection date selector). It is hidden
-   * while recording so it never interrupts the audio session.
+   * while recording so it never interrupts the continuous audio file.
    */
   header?: ReactNode;
 };
 
-const DEFAULT_IDLE_BODY =
-  "Tap below to begin recording your reflection. Audio stays private on this device for now.";
-
 /**
- * Self-contained voice recording panel for a single continuous reflection.
- * Recording lifecycle lives in `useVoiceRecorder`; DB persistence is delegated
- * to the `onSave` prop so each flow can store the correct mode/path.
+ * Guided voice recorder: shows one prompt at a time while capturing a single
+ * continuous recording. Advancing prompts records a time marker rather than
+ * starting a new file.
  */
-export function VoiceRecorder({
-  onSave,
+export function GuidedVoiceRecorder({
+  config,
   idleBody,
+  onSave,
   header,
-}: VoiceRecorderProps) {
+}: GuidedVoiceRecorderProps) {
   const recorder = useVoiceRecorder();
   const { status, setStatus, elapsedSeconds, previewUri, previewSeconds } =
     recorder;
 
+  const prompts = config.prompts;
+  const total = prompts.length;
+
+  const [index, setIndex] = useState(0);
+  const [markers, setMarkers] = useState<GuidedPromptMarker[]>([]);
   const [savingError, setSavingError] = useState(false);
+
+  const prompt = prompts[index];
+  const isLast = index === total - 1;
+
+  async function handleStart() {
+    const started = await recorder.start();
+    if (started && prompts[0]) {
+      setIndex(0);
+      setMarkers([
+        {
+          promptId: prompts[0].id,
+          label: prompts[0].label,
+          startedAtSeconds: 0,
+        },
+      ]);
+    }
+  }
+
+  function handleNextPrompt() {
+    if (isLast) {
+      return;
+    }
+    const next = index + 1;
+    const nextPrompt = prompts[next];
+    if (!nextPrompt) {
+      return;
+    }
+    setIndex(next);
+    setMarkers((prev) => [
+      ...prev,
+      {
+        promptId: nextPrompt.id,
+        label: nextPrompt.label,
+        startedAtSeconds: elapsedSeconds,
+      },
+    ]);
+  }
+
+  function handleDiscard() {
+    recorder.discard();
+    setIndex(0);
+    setMarkers([]);
+    setSavingError(false);
+  }
 
   async function handleSave() {
     if (!previewUri || status === "saving") {
@@ -62,11 +107,14 @@ export function VoiceRecorder({
     setStatus("saving");
     setSavingError(false);
     try {
-      await onSave({ uri: previewUri, durationSeconds: previewSeconds });
-      // On success the caller navigates away; leave status as "saving".
+      await onSave({
+        uri: previewUri,
+        durationSeconds: previewSeconds,
+        markers,
+      });
     } catch (error: unknown) {
       console.warn(
-        "Failed to save voice reflection:",
+        "Failed to save guided voice reflection:",
         error instanceof Error ? error.message : "unknown error",
       );
       setSavingError(true);
@@ -117,9 +165,21 @@ export function VoiceRecorder({
       <View style={styles.card}>
         <Text style={styles.timer}>{formatDuration(elapsedSeconds)}</Text>
         <Text style={styles.recordingLabel}>Recording…</Text>
-        <Text style={styles.hint}>
-          Up to 15 minutes. Audio stays private on this device.
+        <Text style={styles.progress}>
+          Prompt {index + 1} of {total}
         </Text>
+        <Text style={styles.promptLabel}>{prompt?.label}</Text>
+        <Text style={styles.hint}>
+          Take your time. Move on when you're ready — the recording keeps going.
+        </Text>
+        {!isLast ? (
+          <Button
+            label="Next prompt"
+            variant="secondary"
+            onPress={handleNextPrompt}
+            style={styles.action}
+          />
+        ) : null}
         <Button
           label="Stop"
           onPress={() => {
@@ -165,7 +225,7 @@ export function VoiceRecorder({
         <Button
           label="Discard"
           variant="destructive"
-          onPress={recorder.discard}
+          onPress={handleDiscard}
           disabled={status === "saving"}
           style={styles.action}
         />
@@ -194,11 +254,16 @@ export function VoiceRecorder({
     <>
       {header}
       <View style={styles.card}>
-        <Text style={styles.body}>{idleBody ?? DEFAULT_IDLE_BODY}</Text>
+        <Text style={styles.progress}>Prompt 1 of {total}</Text>
+        <Text style={styles.promptLabel}>{prompts[0]?.label}</Text>
+        <Text style={styles.body}>
+          {idleBody ??
+            "When you're ready, record one continuous reflection. You can move to the next prompt while recording."}
+        </Text>
         <Button
           label="Start recording"
           onPress={() => {
-            void recorder.start();
+            void handleStart();
           }}
           style={styles.action}
         />
@@ -240,6 +305,15 @@ const styles = StyleSheet.create({
   errorHint: {
     ...typography.bodySmall,
     color: colors.correctionAccent,
+  },
+  progress: {
+    ...typography.caption,
+    color: colors.textSubtle,
+    textTransform: "uppercase",
+  },
+  promptLabel: {
+    ...typography.sectionTitle,
+    color: colors.text,
   },
   timer: {
     ...typography.screenTitle,

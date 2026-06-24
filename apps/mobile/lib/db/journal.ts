@@ -4,7 +4,7 @@ import type {
   JournalEntry,
 } from "@graceward/shared";
 import { getDatabase } from "./client";
-import { deriveTitle, toLocalDateString } from "./helpers";
+import { deriveTitle, isFutureLocalDate, toLocalDateString } from "./helpers";
 import { softDeleteAudioAssetsForEntry } from "./audio";
 
 type JournalEntryRow = {
@@ -15,6 +15,7 @@ type JournalEntryRow = {
   input_type: string;
   raw_text: string | null;
   title: string | null;
+  structured_payload_json: string | null;
   status: string;
   sync_status: string;
   created_at: string;
@@ -31,6 +32,7 @@ function mapRow(row: JournalEntryRow): JournalEntry {
     inputType: row.input_type as JournalEntry["inputType"],
     rawText: row.raw_text,
     title: row.title,
+    structuredPayloadJson: row.structured_payload_json,
     status: row.status as JournalEntry["status"],
     syncStatus: row.sync_status as JournalEntry["syncStatus"],
     createdAt: row.created_at,
@@ -46,18 +48,27 @@ export async function createJournalEntry(
   const now = new Date();
   const nowIso = now.toISOString();
 
+  const todayDateString = toLocalDateString(now);
+  const entryDate = input.entryDate ?? todayDateString;
+  // Reflections may be dated today or earlier, never in the future. This guards
+  // the data layer even if a screen somehow passes a future date.
+  if (isFutureLocalDate(entryDate, todayDateString)) {
+    throw new Error("FUTURE_ENTRY_DATE");
+  }
+
   const rawText = input.rawText ?? null;
   const derivedTitle =
     input.title ?? (rawText ? deriveTitle(rawText) : null);
 
   const entry: JournalEntry = {
     id: Crypto.randomUUID(),
-    entryDate: input.entryDate ?? toLocalDateString(now),
+    entryDate,
     reflectionPath: input.reflectionPath,
     mode: input.mode,
     inputType: input.inputType,
     rawText,
     title: derivedTitle,
+    structuredPayloadJson: input.structuredPayloadJson ?? null,
     status: input.status ?? "saved",
     syncStatus: input.syncStatus ?? "local_only",
     createdAt: nowIso,
@@ -68,8 +79,9 @@ export async function createJournalEntry(
   await db.runAsync(
     `INSERT INTO journal_entries (
       id, entry_date, reflection_path, mode, input_type, raw_text, title,
-      status, sync_status, created_at, updated_at, deleted_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      structured_payload_json, status, sync_status, created_at, updated_at,
+      deleted_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       entry.id,
       entry.entryDate,
@@ -78,6 +90,7 @@ export async function createJournalEntry(
       entry.inputType,
       entry.rawText,
       entry.title,
+      entry.structuredPayloadJson,
       entry.status,
       entry.syncStatus,
       entry.createdAt,
@@ -94,7 +107,7 @@ export async function listJournalEntries(): Promise<JournalEntry[]> {
   const rows = await db.getAllAsync<JournalEntryRow>(
     `SELECT * FROM journal_entries
       WHERE deleted_at IS NULL
-      ORDER BY created_at DESC`,
+      ORDER BY entry_date DESC, created_at DESC`,
   );
   return rows.map(mapRow);
 }
@@ -142,6 +155,13 @@ export async function getJournalEntryById(
 
 export type UpdateJournalEntryInput = {
   rawText: string;
+  /** When provided, used verbatim; otherwise derived from rawText. */
+  title?: string | null;
+  /**
+   * When the key is present, the structured payload column is written (pass
+   * null to clear it). When omitted, the existing payload is left untouched.
+   */
+  structuredPayloadJson?: string | null;
 };
 
 export async function updateJournalEntry(
@@ -150,13 +170,24 @@ export async function updateJournalEntry(
 ): Promise<JournalEntry | null> {
   const db = await getDatabase();
   const nowIso = new Date().toISOString();
-  const title = deriveTitle(input.rawText);
+  const title =
+    input.title !== undefined ? input.title : deriveTitle(input.rawText);
+
+  const sets = ["raw_text = ?", "title = ?", "updated_at = ?"];
+  const values: (string | null)[] = [input.rawText, title, nowIso];
+
+  if ("structuredPayloadJson" in input) {
+    sets.push("structured_payload_json = ?");
+    values.push(input.structuredPayloadJson ?? null);
+  }
+
+  values.push(id);
 
   await db.runAsync(
     `UPDATE journal_entries
-      SET raw_text = ?, title = ?, updated_at = ?
+      SET ${sets.join(", ")}
       WHERE id = ? AND deleted_at IS NULL`,
-    [input.rawText, title, nowIso, id],
+    values,
   );
 
   return getJournalEntryById(id);
