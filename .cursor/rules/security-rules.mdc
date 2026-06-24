@@ -1,0 +1,12 @@
+# Security Rules
+
+- No secrets in frontend.
+- No raw journal content in analytics.
+- Private storage buckets.
+- Rate limit sensitive endpoints.
+- Server-side subscription entitlements only.
+- Admin actions require audit logs.
+- Raw cloud audio deleted after transcription by default.
+- Account deletion required.
+- Data export required.
+- Logs must be redacted.

@@ -1,0 +1,14 @@
+{
+  "name": "graceward",
+  "private": true,
+  "scripts": {
+    "dev:api": "pnpm --filter @graceward/api dev",
+    "dev:mobile": "pnpm --filter @graceward/mobile start",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.9"
+}

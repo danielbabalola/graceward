@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Graceward",
+    "slug": "graceward",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "graceward",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.graceward.app"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

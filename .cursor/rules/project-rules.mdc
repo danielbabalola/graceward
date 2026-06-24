@@ -1,0 +1,22 @@
+# Project Rules
+
+This project is Graceward: Daily Reflection.
+
+Graceward is a private Christian reflection app.
+
+## Non-Negotiables
+
+- iOS-first
+- Expo + React Native + TypeScript
+- Local-first
+- Privacy-conscious
+- Scripture-rooted
+- AI through backend only
+- No secrets in frontend
+- No raw journal content in analytics
+- No cloud-first private data unless explicitly designed
+- Update docs when changing architecture
+
+## Product Positioning
+
+Graceward helps users process their day through voice or text, turning thoughts into prayer points, gratitude, biblical reflection, and reminders of God's faithfulness.

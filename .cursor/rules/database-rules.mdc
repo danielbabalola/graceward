@@ -1,0 +1,10 @@
+# Database Rules
+
+- Local SQLite is primary for private app data.
+- Supabase is for auth, optional sync, jobs, subscriptions, wisdom sources, audit logs.
+- Use migrations.
+- Never edit applied migrations.
+- Add indexes intentionally.
+- Use sync_status for syncable local records.
+- Use soft deletes for syncable data.
+- Enable RLS for Supabase user data.

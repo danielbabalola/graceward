@@ -1,0 +1,13 @@
+# Frontend Rules
+
+- Use Expo.
+- Use React Native.
+- Use TypeScript.
+- Use Expo Router.
+- Keep screens calm and uncluttered.
+- Include loading, empty, and error states.
+- Use local SQLite first.
+- Do not call AI providers directly.
+- Do not store secrets in frontend.
+- Do not create more bottom tabs than documented.
+- Respect accessibility.

@@ -1,0 +1,12 @@
+# Backend Rules
+
+- Use Fastify for `apps/api`.
+- Backend validates auth.
+- Backend enforces rate limits.
+- Backend enforces entitlements.
+- Backend validates input.
+- Backend calls AI providers.
+- Backend stores prompt versions.
+- Backend returns structured errors.
+- Do not log sensitive user content.
+- Use queues for long-running AI/transcription jobs.
