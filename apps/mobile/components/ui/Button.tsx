@@ -3,16 +3,44 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextStyle,
   ViewStyle,
 } from "react-native";
 import { colors, radii, spacing, touchTarget, typography } from "@/theme/tokens";
+
+type ButtonVariant = "primary" | "secondary" | "destructive";
 
 type ButtonProps = {
   label: string;
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
+  variant?: ButtonVariant;
   style?: ViewStyle;
+};
+
+const containerVariants: Record<ButtonVariant, ViewStyle> = {
+  primary: {
+    backgroundColor: colors.primaryDeep,
+    borderWidth: 1,
+    borderColor: colors.primaryDeep,
+  },
+  secondary: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  destructive: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: colors.correctionAccent,
+  },
+};
+
+const labelVariants: Record<ButtonVariant, TextStyle> = {
+  primary: { color: colors.white },
+  secondary: { color: colors.primaryDeep },
+  destructive: { color: colors.correctionAccent },
 };
 
 export function Button({
@@ -20,6 +48,7 @@ export function Button({
   onPress,
   disabled = false,
   loading = false,
+  variant = "primary",
   style,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
@@ -32,15 +61,18 @@ export function Button({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       style={({ pressed }) => [
         styles.button,
+        containerVariants[variant],
         isDisabled && styles.disabled,
         pressed && !isDisabled && styles.pressed,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={colors.white} />
+        <ActivityIndicator
+          color={variant === "primary" ? colors.white : colors.primaryDeep}
+        />
       ) : (
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, labelVariants[variant]]}>{label}</Text>
       )}
     </Pressable>
   );
@@ -48,7 +80,6 @@ export function Button({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: colors.primaryDeep,
     borderRadius: radii.lg,
     minHeight: touchTarget,
     paddingVertical: spacing.md,
@@ -58,7 +89,6 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.cardTitle,
-    color: colors.white,
   },
   disabled: {
     opacity: 0.4,

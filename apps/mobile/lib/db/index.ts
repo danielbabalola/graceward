@@ -4,5 +4,8 @@ export {
   createJournalEntry,
   listJournalEntries,
   getJournalEntryById,
+  updateJournalEntry,
+  softDeleteJournalEntry,
 } from "./journal";
+export type { UpdateJournalEntryInput } from "./journal";
 export { deriveTitle, toLocalDateString } from "./helpers";

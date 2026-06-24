@@ -104,3 +104,37 @@ export async function getJournalEntryById(
   );
   return row ? mapRow(row) : null;
 }
+
+export type UpdateJournalEntryInput = {
+  rawText: string;
+};
+
+export async function updateJournalEntry(
+  id: string,
+  input: UpdateJournalEntryInput,
+): Promise<JournalEntry | null> {
+  const db = await getDatabase();
+  const nowIso = new Date().toISOString();
+  const title = deriveTitle(input.rawText);
+
+  await db.runAsync(
+    `UPDATE journal_entries
+      SET raw_text = ?, title = ?, updated_at = ?
+      WHERE id = ? AND deleted_at IS NULL`,
+    [input.rawText, title, nowIso, id],
+  );
+
+  return getJournalEntryById(id);
+}
+
+export async function softDeleteJournalEntry(id: string): Promise<void> {
+  const db = await getDatabase();
+  const nowIso = new Date().toISOString();
+
+  await db.runAsync(
+    `UPDATE journal_entries
+      SET deleted_at = ?, updated_at = ?
+      WHERE id = ? AND deleted_at IS NULL`,
+    [nowIso, nowIso, id],
+  );
+}

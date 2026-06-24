@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { JournalEntry } from "@graceward/shared";
 import {
   entryPreview,
@@ -10,11 +10,12 @@ import { colors, radii, shadows, spacing, typography } from "@/theme/tokens";
 
 type JournalEntryCardProps = {
   entry: JournalEntry;
+  onPress?: () => void;
 };
 
-export function JournalEntryCard({ entry }: JournalEntryCardProps) {
-  return (
-    <View style={styles.card}>
+export function JournalEntryCard({ entry, onPress }: JournalEntryCardProps) {
+  const content = (
+    <>
       <Text style={styles.meta}>
         {formatEntryDate(entry.entryDate)} · {modeLabel(entry.mode)} ·{" "}
         {inputTypeLabel(entry.inputType)}
@@ -22,7 +23,22 @@ export function JournalEntryCard({ entry }: JournalEntryCardProps) {
       <Text style={styles.preview} numberOfLines={2}>
         {entryPreview(entry)}
       </Text>
-    </View>
+    </>
+  );
+
+  if (!onPress) {
+    return <View style={styles.card}>{content}</View>;
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Open reflection: ${entryPreview(entry)}`}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+    >
+      {content}
+    </Pressable>
   );
 }
 
@@ -35,6 +51,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
     ...shadows.card,
+  },
+  pressed: {
+    opacity: 0.92,
   },
   meta: {
     ...typography.caption,

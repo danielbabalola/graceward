@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import type { JournalEntry } from "@graceward/shared";
 import { Card } from "@/components/ui/Card";
 import { Screen } from "@/components/ui/Screen";
@@ -64,7 +64,16 @@ export default function JournalScreen() {
       ) : (
         <View style={styles.list}>
           {entries.map((entry) => (
-            <JournalEntryCard key={entry.id} entry={entry} />
+            <JournalEntryCard
+              key={entry.id}
+              entry={entry}
+              onPress={() =>
+                router.push({
+                  pathname: "/journal/[id]",
+                  params: { id: entry.id },
+                })
+              }
+            />
           ))}
         </View>
       )}

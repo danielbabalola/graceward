@@ -2,6 +2,8 @@ import type {
   JournalEntry,
   JournalInputType,
   JournalMode,
+  JournalStatus,
+  SyncStatus,
 } from "@graceward/shared";
 
 const modeLabels: Record<JournalMode, string> = {
@@ -22,12 +24,38 @@ const inputTypeLabels: Record<JournalInputType, string> = {
   mixed: "Mixed",
 };
 
+const statusLabels: Record<JournalStatus, string> = {
+  draft: "Draft",
+  saved: "Saved",
+  processing: "Processing",
+  processed: "Processed",
+  failed: "Needs attention",
+};
+
+const syncStatusLabels: Record<SyncStatus, string> = {
+  local_only: "Private to this device",
+  pending_upload: "Waiting to sync",
+  syncing: "Syncing",
+  synced: "Synced",
+  failed: "Sync failed",
+  conflict: "Sync conflict",
+  deleted_pending_sync: "Removal pending",
+};
+
 export function modeLabel(mode: JournalMode): string {
   return modeLabels[mode] ?? mode;
 }
 
 export function inputTypeLabel(inputType: JournalInputType): string {
   return inputTypeLabels[inputType] ?? inputType;
+}
+
+export function statusLabel(status: JournalStatus): string {
+  return statusLabels[status] ?? status;
+}
+
+export function syncStatusLabel(syncStatus: SyncStatus): string {
+  return syncStatusLabels[syncStatus] ?? syncStatus;
 }
 
 export function formatEntryDate(entryDate: string): string {
