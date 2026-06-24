@@ -25,4 +25,20 @@ export {
   archivePrayerRequest,
   softDeletePrayerRequest,
 } from "./prayer";
+export {
+  createGratitude,
+  listGratitudes,
+  listRecentGratitudes,
+  getGratitudeById,
+  updateGratitude,
+  softDeleteGratitude,
+} from "./gratitude";
+export {
+  createWin,
+  listWins,
+  listRecentWins,
+  getWinById,
+  updateWin,
+  softDeleteWin,
+} from "./wins";
 export { deriveTitle, toLocalDateString } from "./helpers";

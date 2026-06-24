@@ -86,6 +86,50 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 4,
+    up: async (db) => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS gratitudes (
+          id TEXT PRIMARY KEY NOT NULL,
+          journal_entry_id TEXT,
+          content TEXT NOT NULL,
+          category TEXT,
+          sync_status TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          deleted_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_gratitudes_journal_entry_id
+          ON gratitudes (journal_entry_id);
+        CREATE INDEX IF NOT EXISTS idx_gratitudes_created_at
+          ON gratitudes (created_at);
+        CREATE INDEX IF NOT EXISTS idx_gratitudes_sync_status
+          ON gratitudes (sync_status);
+        CREATE INDEX IF NOT EXISTS idx_gratitudes_deleted_at
+          ON gratitudes (deleted_at);
+
+        CREATE TABLE IF NOT EXISTS wins (
+          id TEXT PRIMARY KEY NOT NULL,
+          journal_entry_id TEXT,
+          content TEXT NOT NULL,
+          faithfulness_theme TEXT,
+          sync_status TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          deleted_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_wins_journal_entry_id
+          ON wins (journal_entry_id);
+        CREATE INDEX IF NOT EXISTS idx_wins_created_at
+          ON wins (created_at);
+        CREATE INDEX IF NOT EXISTS idx_wins_sync_status
+          ON wins (sync_status);
+        CREATE INDEX IF NOT EXISTS idx_wins_deleted_at
+          ON wins (deleted_at);
+      `);
+    },
+  },
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {

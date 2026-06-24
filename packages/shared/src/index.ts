@@ -130,3 +130,49 @@ export type UpdatePrayerRequestInput = {
   description?: string | null;
   followUpAt?: string | null;
 };
+
+export type Gratitude = {
+  id: string;
+  journalEntryId: string | null;
+  content: string;
+  category: string | null;
+  syncStatus: SyncStatus;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+export type CreateGratitudeInput = {
+  content: string;
+  category?: string | null;
+  journalEntryId?: string | null;
+  syncStatus?: SyncStatus;
+};
+
+export type UpdateGratitudeInput = {
+  content?: string;
+  category?: string | null;
+};
+
+export type Win = {
+  id: string;
+  journalEntryId: string | null;
+  content: string;
+  faithfulnessTheme: string | null;
+  syncStatus: SyncStatus;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+export type CreateWinInput = {
+  content: string;
+  faithfulnessTheme?: string | null;
+  journalEntryId?: string | null;
+  syncStatus?: SyncStatus;
+};
+
+export type UpdateWinInput = {
+  content?: string;
+  faithfulnessTheme?: string | null;
+};

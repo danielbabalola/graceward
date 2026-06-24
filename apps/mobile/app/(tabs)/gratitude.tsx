@@ -1,36 +1,60 @@
-import { Card } from "@/components/ui/Card";
+import { useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { router } from "expo-router";
+import { Button } from "@/components/ui/Button";
 import { Screen } from "@/components/ui/Screen";
-import { Section } from "@/components/ui/Section";
-import { colors } from "@/theme/tokens";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { GratitudeList } from "@/components/gratitude/GratitudeList";
+import { WinList } from "@/components/gratitude/WinList";
+import { FaithfulnessView } from "@/components/gratitude/FaithfulnessView";
+import { spacing } from "@/theme/tokens";
+
+type GratitudeTab = "gratitudes" | "wins" | "faithfulness";
+
+const tabOptions: { value: GratitudeTab; label: string }[] = [
+  { value: "gratitudes", label: "Gratitudes" },
+  { value: "wins", label: "Wins" },
+  { value: "faithfulness", label: "Faithfulness" },
+];
 
 export default function GratitudeScreen() {
+  const [tab, setTab] = useState<GratitudeTab>("gratitudes");
+
   return (
     <Screen
       title="Gratitude"
       subtitle="Notice mercy, wins, and God's care — one day at a time."
     >
-      <Card
-        variant="subtle"
-        title="Notice one mercy from today"
-        description="No matter how small."
-      />
+      {tab === "gratitudes" ? (
+        <View style={styles.addButton}>
+          <Button
+            label="Add gratitude"
+            onPress={() => router.push("/gratitude/new")}
+          />
+        </View>
+      ) : null}
+      {tab === "wins" ? (
+        <View style={styles.addButton}>
+          <Button label="Add win" onPress={() => router.push("/win/new")} />
+        </View>
+      ) : null}
 
-      <Section title="Sections">
-        <Card
-          title="Daily Gratitudes"
-          description="Simple thanksgivings from your day and reflections."
-        />
-        <Card
-          title="Wins"
-          description="Signs of God's goodness worth remembering."
-          style={{ borderColor: colors.accentGold }}
-        />
-        <Card
-          title="Faithfulness Timeline"
-          description="Answered prayers and patterns of God's care over time."
-          style={{ borderColor: colors.answeredPrayerAccent }}
-        />
-      </Section>
+      <View style={styles.switcher}>
+        <SegmentedControl options={tabOptions} value={tab} onChange={setTab} />
+      </View>
+
+      {tab === "gratitudes" ? <GratitudeList /> : null}
+      {tab === "wins" ? <WinList /> : null}
+      {tab === "faithfulness" ? <FaithfulnessView /> : null}
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  addButton: {
+    marginBottom: spacing.lg,
+  },
+  switcher: {
+    marginBottom: spacing.lg,
+  },
+});
