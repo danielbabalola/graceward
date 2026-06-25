@@ -1,6 +1,17 @@
 import * as Crypto from "expo-crypto";
 import type { CreateWinInput, UpdateWinInput, Win } from "@graceward/shared";
 import { getDatabase } from "./client";
+import { listTagsForEntry, setEntryTags } from "./tags";
+
+function legacyTagNames(input: {
+  tags?: string[];
+  faithfulnessTheme?: string | null;
+}): string[] {
+  if (input.tags !== undefined) {
+    return input.tags;
+  }
+  return input.faithfulnessTheme ? [input.faithfulnessTheme] : [];
+}
 
 type WinRow = {
   id: string;
@@ -34,7 +45,8 @@ export async function createWin(input: CreateWinInput): Promise<Win> {
     id: Crypto.randomUUID(),
     journalEntryId: input.journalEntryId ?? null,
     content: input.content,
-    faithfulnessTheme: input.faithfulnessTheme ?? null,
+    // Legacy column is no longer written; tags are the source of truth.
+    faithfulnessTheme: null,
     syncStatus: input.syncStatus ?? "local_only",
     createdAt: nowIso,
     updatedAt: nowIso,
@@ -57,6 +69,11 @@ export async function createWin(input: CreateWinInput): Promise<Win> {
       win.deletedAt,
     ],
   );
+
+  const tagNames = legacyTagNames(input);
+  if (tagNames.length > 0) {
+    await setEntryTags("win", win.id, tagNames);
+  }
 
   return win;
 }
@@ -132,10 +149,6 @@ export async function updateWin(
     sets.push("content = ?");
     values.push(input.content);
   }
-  if (input.faithfulnessTheme !== undefined) {
-    sets.push("faithfulness_theme = ?");
-    values.push(input.faithfulnessTheme);
-  }
 
   sets.push("updated_at = ?");
   values.push(new Date().toISOString());
@@ -147,7 +160,17 @@ export async function updateWin(
     values,
   );
 
+  if (input.tags !== undefined || input.faithfulnessTheme !== undefined) {
+    await setEntryTags("win", id, legacyTagNames(input));
+  }
+
   return getWinById(id);
+}
+
+/** Tag names currently applied to a faithfulness moment (win). */
+export async function getWinTagNames(id: string): Promise<string[]> {
+  const tags = await listTagsForEntry("win", id);
+  return tags.map((tag) => tag.name);
 }
 
 export async function softDeleteWin(id: string): Promise<void> {

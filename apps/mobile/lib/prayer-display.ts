@@ -1,4 +1,5 @@
 import type { PrayerRequest, PrayerRequestStatus } from "@graceward/shared";
+import { isTodayOrPast } from "@/lib/dates";
 
 const statusLabels: Record<PrayerRequestStatus, string> = {
   active: "Active",
@@ -62,6 +63,17 @@ export function prayerPreview(request: PrayerRequest): string {
   return `${firstLine.slice(0, MAX_PREVIEW_LENGTH).trimEnd()}…`;
 }
 
+/**
+ * Whether an active prayer's follow-up day has arrived or passed — a gentle cue
+ * to come back to it, never a hard/overdue deadline.
+ */
+export function prayerIsDue(request: PrayerRequest): boolean {
+  if (request.status !== "active" || !request.followUpAt) {
+    return false;
+  }
+  return isTodayOrPast(request.followUpAt);
+}
+
 /** Builds a calm secondary line describing status + relevant date. */
 export function prayerMetaLine(request: PrayerRequest): string {
   const status = prayerStatusLabel(request.status);
@@ -71,7 +83,12 @@ export function prayerMetaLine(request: PrayerRequest): string {
   }
   if (request.status === "active") {
     const date = formatPrayerDate(request.followUpAt);
-    return date ? `${status} · Follow up ${date}` : status;
+    if (!date) {
+      return status;
+    }
+    return prayerIsDue(request)
+      ? `${status} · Time to revisit`
+      : `${status} · Follow up ${date}`;
   }
   return status;
 }

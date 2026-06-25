@@ -93,7 +93,20 @@ export default function SettingsScreen() {
     }, []),
   );
 
-  async function handleResetConsent() {
+  // Resetting a consent notice isn't destructive, but it changes future
+  // behavior (the privacy notice will reappear), so confirm before doing it.
+  function handleResetConsent() {
+    Alert.alert(
+      "Show the AI reflection notice again?",
+      "The privacy notice will appear the next time you reflect with Graceward.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Show again", onPress: () => void performResetConsent() },
+      ],
+    );
+  }
+
+  async function performResetConsent() {
     try {
       await resetAiReflectionConsent();
       setConsentState("not-acknowledged");
@@ -105,7 +118,21 @@ export default function SettingsScreen() {
     }
   }
 
-  async function handleResetTranscriptionConsent() {
+  function handleResetTranscriptionConsent() {
+    Alert.alert(
+      "Show the transcription notice again?",
+      "The privacy notice will appear the next time you transcribe a voice reflection.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Show again",
+          onPress: () => void performResetTranscriptionConsent(),
+        },
+      ],
+    );
+  }
+
+  async function performResetTranscriptionConsent() {
     try {
       await resetVoiceTranscriptionConsent();
       setTranscriptionConsentState("not-acknowledged");
@@ -117,7 +144,21 @@ export default function SettingsScreen() {
     }
   }
 
-  async function handleResetVoiceEntryConsent() {
+  function handleResetVoiceEntryConsent() {
+    Alert.alert(
+      "Show the voice entry notice again?",
+      "The privacy notice will appear the next time you speak to create an entry.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Show again",
+          onPress: () => void performResetVoiceEntryConsent(),
+        },
+      ],
+    );
+  }
+
+  async function performResetVoiceEntryConsent() {
     try {
       await resetVoiceEntryConsent();
       setVoiceEntryConsentState("not-acknowledged");
@@ -153,7 +194,7 @@ export default function SettingsScreen() {
     }
     Alert.alert(
       "Delete all local data?",
-      "This removes every reflection, prayer request, gratitude, faithfulness moment, and voice recording from this device.",
+      "This removes every reflection, prayer request, gratitude, testimony, and voice recording from this device.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -274,11 +315,11 @@ export default function SettingsScreen() {
       <Section title="Privacy & Local Data">
         <SettingsRow
           title="Saved on this device"
-          description="Your reflections, prayers, gratitudes, faithfulness moments, lessons, and voice recordings are stored locally on this device."
+          description="Your reflections, prayers, gratitudes, testimonies, lessons, and voice recordings are stored locally on this device."
         />
         <SettingsRow
           title="Recordings stay on this device until you choose a voice action"
-          description="Your voice recordings are kept on this device. A recording is only sent anywhere when you choose a voice AI action — transcribing a reflection, or speaking to create a prayer, gratitude, faithfulness moment, or lesson."
+          description="Your voice recordings are kept on this device. A recording is only sent anywhere when you choose a voice AI action — transcribing a reflection, or speaking to create a prayer, gratitude, testimony, or lesson."
         />
         <SettingsRow
           title="Only what you choose leaves your device"
@@ -301,7 +342,7 @@ export default function SettingsScreen() {
         />
         <SettingsRow
           title="Speaking to create an entry: audio is sent, then discarded"
-          description="When you speak to create a prayer, gratitude, faithfulness moment, or lesson, that recording is sent to Graceward to turn into text and organize into the entry's fields. You review and save the text. The recording isn't kept afterward — it's discarded once the entry has been prepared, and it isn't included in your data export."
+          description="When you speak to create a prayer, gratitude, testimony, or lesson, that recording is sent to Graceward to turn into text and organize into the entry's fields. You review and save the text. The recording isn't kept afterward — it's discarded once the entry has been prepared, and it isn't included in your data export."
         />
         <SettingsRow
           title="Audio retention controls are coming later"
@@ -316,7 +357,7 @@ export default function SettingsScreen() {
       <Section title="Export Data">
         <Text style={styles.paragraph}>
           Create a JSON file of your reflections, prayer requests, gratitudes,
-          faithfulness moments, and audio details (not the recordings
+          testimonies, and audio details (not the recordings
           themselves). You choose where it goes from the share sheet.
         </Text>
         <Button
@@ -379,7 +420,7 @@ export default function SettingsScreen() {
         />
         <SettingsRow
           title="Speaking to create an entry is manual"
-          description="Speaking to create a prayer, gratitude, faithfulness moment, or lesson runs only when you choose it. The selected recording is sent to Graceward to turn into text and organize into the entry's fields for you to review and save; the recording is then discarded."
+          description="Speaking to create a prayer, gratitude, testimony, or lesson runs only when you choose it. The selected recording is sent to Graceward to turn into text and organize into the entry's fields for you to review and save; the recording is then discarded."
         />
         <SettingsRow
           title="AI reflection privacy notice"
@@ -469,7 +510,7 @@ export default function SettingsScreen() {
         ) : null}
         <SettingsRow
           title="What a bug report includes"
-          description="Only safe app details: version, build, platform, OS, which API environment you're on (host only), and a timestamp. It never includes your reflections, prayers, gratitudes, faithfulness moments, audio, transcripts, or AI responses — and no API keys or secrets."
+          description="Only safe app details: version, build, platform, OS, which API environment you're on (host only), and a timestamp. It never includes your reflections, prayers, gratitudes, testimonies, audio, transcripts, or AI responses — and no API keys or secrets."
         />
       </Section>
 

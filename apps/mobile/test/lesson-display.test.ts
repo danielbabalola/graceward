@@ -19,33 +19,19 @@ function makeLesson(overrides: Partial<Lesson>): Lesson {
 }
 
 describe("lessonMetaLine", () => {
-  it("includes the theme when present", () => {
+  it("shows only the date for an active lesson (tags render as chips)", () => {
+    const line = lessonMetaLine(makeLesson({ status: "active" }));
+    expect(line).not.toContain("·");
+    expect(line).not.toContain("Archived");
+  });
+
+  it("ignores the deprecated theme field in the meta line", () => {
     const line = lessonMetaLine(makeLesson({ theme: "Trust" }));
-    expect(line).toContain("Trust");
-    expect(line).not.toContain("Archived");
-  });
-
-  it("omits the theme separator when there is no theme", () => {
-    const line = lessonMetaLine(makeLesson({ theme: null }));
-    expect(line).not.toContain("·");
-    expect(line).not.toContain("Archived");
-  });
-
-  it("treats a blank theme as no theme", () => {
-    const line = lessonMetaLine(makeLesson({ theme: "   " }));
-    expect(line).not.toContain("·");
+    expect(line).not.toContain("Trust");
   });
 
   it("marks archived lessons", () => {
     const line = lessonMetaLine(makeLesson({ status: "archived" }));
-    expect(line).toContain("Archived");
-  });
-
-  it("shows both theme and archived marker", () => {
-    const line = lessonMetaLine(
-      makeLesson({ theme: "Patience", status: "archived" }),
-    );
-    expect(line).toContain("Patience");
     expect(line).toContain("Archived");
   });
 });

@@ -7,6 +7,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { GratitudeList } from "@/components/gratitude/GratitudeList";
 import { FaithfulnessView } from "@/components/gratitude/FaithfulnessView";
 import { LessonsList } from "@/components/lessons/LessonsList";
+import { InstructionsList } from "@/components/instructions/InstructionsList";
 import {
   DEFAULT_REMEMBER_SEGMENT,
   parseRememberSegment,
@@ -16,8 +17,9 @@ import { spacing } from "@/theme/tokens";
 
 const tabOptions: { value: RememberSegment; label: string }[] = [
   { value: "gratitudes", label: "Gratitude" },
-  { value: "faithfulness", label: "Faithfulness" },
+  { value: "faithfulness", label: "Testimonies" },
   { value: "lessons", label: "Lessons" },
+  { value: "instructions", label: "Instructions" },
 ];
 
 export default function RememberScreen() {
@@ -29,15 +31,15 @@ export default function RememberScreen() {
   const segmentRef = useRef(params.segment);
   segmentRef.current = params.segment;
 
-  // On each focus: honor a `segment` param if present, then clear it so a later
-  // normal return defaults calmly to Gratitude. With no param, reset to the
-  // default. Manual segment switches while focused are preserved (this only
-  // runs on focus, not on every render).
+  // On each focus: honor an explicit `segment` param (e.g. arriving from a
+  // "go to Remember > Instructions" link), then clear it so it isn't re-applied.
+  // With no param we leave the current segment untouched, so returning from a
+  // detail screen keeps you on the segment you were browsing.
   useFocusEffect(
     useCallback(() => {
       const raw = segmentRef.current;
-      setTab(parseRememberSegment(raw));
       if (raw !== undefined) {
+        setTab(parseRememberSegment(raw));
         router.setParams({ segment: undefined });
       }
     }, []),
@@ -59,7 +61,7 @@ export default function RememberScreen() {
       {tab === "faithfulness" ? (
         <View style={styles.addButton}>
           <Button
-            label="Add faithfulness moment"
+            label="Add testimony"
             onPress={() => router.push("/win/new")}
           />
         </View>
@@ -69,14 +71,31 @@ export default function RememberScreen() {
           <Button label="Save a lesson" onPress={() => router.push("/lesson/new")} />
         </View>
       ) : null}
+      {tab === "instructions" ? (
+        <View style={styles.addButton}>
+          <Button
+            label="Add instruction"
+            onPress={() => router.push("/instruction/new")}
+          />
+        </View>
+      ) : null}
 
       <View style={styles.switcher}>
         <SegmentedControl options={tabOptions} value={tab} onChange={setTab} />
       </View>
 
+      <View style={styles.browseTags}>
+        <Button
+          label="Browse tags"
+          variant="secondary"
+          onPress={() => router.push("/tags")}
+        />
+      </View>
+
       {tab === "gratitudes" ? <GratitudeList /> : null}
       {tab === "faithfulness" ? <FaithfulnessView /> : null}
       {tab === "lessons" ? <LessonsList /> : null}
+      {tab === "instructions" ? <InstructionsList /> : null}
     </Screen>
   );
 }
@@ -86,6 +105,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   switcher: {
+    marginBottom: spacing.md,
+  },
+  browseTags: {
     marginBottom: spacing.lg,
   },
 });

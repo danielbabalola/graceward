@@ -1,9 +1,72 @@
+import * as Crypto from "expo-crypto";
 import type { SQLiteDatabase } from "expo-sqlite";
+import {
+  planLegacyTagBackfill,
+  type LegacyLabelRow,
+} from "@/lib/tag-backfill";
 
 type Migration = {
   version: number;
   up: (db: SQLiteDatabase) => Promise<void>;
 };
+
+/**
+ * Backfills the unified tag tables from the legacy single-label columns
+ * (gratitudes.category, wins.faithfulness_theme, lessons.theme). The dedupe /
+ * blank-skipping rule lives in the pure, dependency-free planLegacyTagBackfill
+ * (so it can be unit-tested); this layer only reads rows and runs inserts.
+ */
+async function backfillTagsFromLegacyColumns(db: SQLiteDatabase): Promise<void> {
+  const sources: { table: string; column: string; entryType: string }[] = [
+    { table: "gratitudes", column: "category", entryType: "gratitude" },
+    { table: "wins", column: "faithfulness_theme", entryType: "win" },
+    { table: "lessons", column: "theme", entryType: "lesson" },
+  ];
+
+  const legacyRows: LegacyLabelRow[] = [];
+  for (const source of sources) {
+    const rows = await db.getAllAsync<{ id: string; label: string | null }>(
+      `SELECT id, ${source.column} AS label FROM ${source.table}
+        WHERE ${source.column} IS NOT NULL
+          AND TRIM(${source.column}) <> ''
+          AND deleted_at IS NULL`,
+    );
+    for (const row of rows) {
+      legacyRows.push({
+        entryType: source.entryType,
+        entryId: row.id,
+        label: row.label,
+      });
+    }
+  }
+
+  const plan = planLegacyTagBackfill(legacyRows);
+  const slugToTagId = new Map<string, string>();
+  const nowIso = new Date().toISOString();
+
+  for (const tag of plan.tags) {
+    const tagId = Crypto.randomUUID();
+    slugToTagId.set(tag.slug, tagId);
+    await db.runAsync(
+      `INSERT INTO tags (id, name, slug, created_at, updated_at, deleted_at)
+        VALUES (?, ?, ?, ?, ?, NULL)`,
+      [tagId, tag.name, tag.slug, nowIso, nowIso],
+    );
+  }
+
+  for (const link of plan.links) {
+    const tagId = slugToTagId.get(link.slug);
+    if (!tagId) {
+      continue;
+    }
+    await db.runAsync(
+      `INSERT OR IGNORE INTO entry_tags (
+        id, tag_id, entry_type, entry_id, created_at, deleted_at
+      ) VALUES (?, ?, ?, ?, ?, NULL)`,
+      [Crypto.randomUUID(), tagId, link.entryType, link.entryId, nowIso],
+    );
+  }
+}
 
 const migrations: Migration[] = [
   {
@@ -237,6 +300,86 @@ const migrations: Migration[] = [
           ON lessons (sync_status);
         CREATE INDEX IF NOT EXISTS idx_lessons_deleted_at
           ON lessons (deleted_at);
+      `);
+    },
+  },
+  {
+    version: 10,
+    up: async (db) => {
+      // Unified tagging: a shared tag vocabulary linked many-to-many to every
+      // content type via entry_tags. Existing single-label values (gratitude
+      // category, faithfulness theme, lesson theme) are backfilled into tags so
+      // nothing is lost; the legacy columns are left in place but unused.
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS tags (
+          id TEXT PRIMARY KEY NOT NULL,
+          name TEXT NOT NULL,
+          slug TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          deleted_at TEXT
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_tags_slug ON tags (slug);
+
+        CREATE TABLE IF NOT EXISTS entry_tags (
+          id TEXT PRIMARY KEY NOT NULL,
+          tag_id TEXT NOT NULL,
+          entry_type TEXT NOT NULL,
+          entry_id TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          deleted_at TEXT
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_entry_tags_entry_tag
+          ON entry_tags (entry_type, entry_id, tag_id);
+        CREATE INDEX IF NOT EXISTS idx_entry_tags_tag_id
+          ON entry_tags (tag_id);
+        CREATE INDEX IF NOT EXISTS idx_entry_tags_entry
+          ON entry_tags (entry_type, entry_id);
+      `);
+
+      await backfillTagsFromLegacyColumns(db);
+    },
+  },
+  {
+    version: 11,
+    up: async (db) => {
+      // Instructions: things the user believes God has instructed or called
+      // them to do, recorded in their own words. Manual only — never generated
+      // by AI. Mirrors the lessons table plus an active/fulfilled status (where
+      // "fulfilled" marks an instruction the user has acted on). Local-only.
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS instructions (
+          id TEXT PRIMARY KEY NOT NULL,
+          title TEXT NOT NULL,
+          content TEXT NOT NULL,
+          source_journal_entry_id TEXT,
+          status TEXT NOT NULL,
+          sync_status TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          deleted_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_instructions_status
+          ON instructions (status);
+        CREATE INDEX IF NOT EXISTS idx_instructions_source_journal_entry_id
+          ON instructions (source_journal_entry_id);
+        CREATE INDEX IF NOT EXISTS idx_instructions_created_at
+          ON instructions (created_at);
+        CREATE INDEX IF NOT EXISTS idx_instructions_sync_status
+          ON instructions (sync_status);
+        CREATE INDEX IF NOT EXISTS idx_instructions_deleted_at
+          ON instructions (deleted_at);
+      `);
+    },
+  },
+  {
+    version: 12,
+    up: async (db) => {
+      // Optional, gentle "by when" target date for an instruction (the day the
+      // user intends to act by). Nullable; existing rows keep NULL. Mirrors the
+      // prayer follow-up date in spirit, but is never a hard/overdue deadline.
+      await db.execAsync(`
+        ALTER TABLE instructions ADD COLUMN due_at TEXT;
       `);
     },
   },

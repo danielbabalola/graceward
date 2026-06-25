@@ -1,23 +1,34 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
-import type { PrayerRequest, Win } from "@graceward/shared";
+import type { PrayerRequest, Tag, Win } from "@graceward/shared";
 import { Card } from "@/components/ui/Card";
 import { Section } from "@/components/ui/Section";
 import { ItemCard } from "@/components/gratitude/ItemCard";
-import { listRecentWins, listPrayerRequestsByStatus } from "@/lib/db";
+import { TagFilterBar } from "@/components/tags/TagFilterBar";
+import { collectDistinctTags } from "@/lib/tag-display";
+import {
+  listRecentWins,
+  listPrayerRequestsByStatus,
+  listTagsForEntries,
+} from "@/lib/db";
 import { contentPreview, winMetaLine } from "@/lib/gratitude-display";
 import { formatPrayerDate } from "@/lib/prayer-display";
 import { colors, spacing, typography } from "@/theme/tokens";
 
 const EXPLANATION =
-  "Faithfulness gathers answered prayers and moments you want to remember over time.";
+  "Testimonies gather answered prayers and the major moments of God's faithfulness you want to remember over time.";
 
 type LoadState = "loading" | "ready" | "error";
 
 export function FaithfulnessView() {
   const [wins, setWins] = useState<Win[]>([]);
   const [answered, setAnswered] = useState<PrayerRequest[]>([]);
+  const [winTags, setWinTags] = useState<Map<string, Tag[]>>(new Map());
+  const [answeredTags, setAnsweredTags] = useState<Map<string, Tag[]>>(
+    new Map(),
+  );
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
 
   useFocusEffect(
@@ -28,10 +39,22 @@ export function FaithfulnessView() {
         listRecentWins(10),
         listPrayerRequestsByStatus("answered"),
       ])
-        .then(([winRows, answeredRows]) => {
+        .then(async ([winRows, answeredRows]) => {
+          const [winMap, answeredMap] = await Promise.all([
+            listTagsForEntries(
+              "win",
+              winRows.map((row) => row.id),
+            ),
+            listTagsForEntries(
+              "prayer_request",
+              answeredRows.map((row) => row.id),
+            ),
+          ]);
           if (active) {
             setWins(winRows);
             setAnswered(answeredRows);
+            setWinTags(winMap);
+            setAnsweredTags(answeredMap);
             setLoadState("ready");
           }
         })
@@ -50,6 +73,37 @@ export function FaithfulnessView() {
     }, []),
   );
 
+  const filterTags = useMemo(() => {
+    const merged = new Map<string, Tag[]>();
+    for (const [id, tags] of winTags) {
+      merged.set(`w:${id}`, tags);
+    }
+    for (const [id, tags] of answeredTags) {
+      merged.set(`p:${id}`, tags);
+    }
+    return collectDistinctTags(merged);
+  }, [winTags, answeredTags]);
+
+  const visibleWins = useMemo(() => {
+    if (!selectedTagId) {
+      return wins;
+    }
+    return wins.filter((win) =>
+      (winTags.get(win.id) ?? []).some((tag) => tag.id === selectedTagId),
+    );
+  }, [wins, winTags, selectedTagId]);
+
+  const visibleAnswered = useMemo(() => {
+    if (!selectedTagId) {
+      return answered;
+    }
+    return answered.filter((request) =>
+      (answeredTags.get(request.id) ?? []).some(
+        (tag) => tag.id === selectedTagId,
+      ),
+    );
+  }, [answered, answeredTags, selectedTagId]);
+
   if (loadState === "loading") {
     return (
       <View style={styles.centered}>
@@ -62,7 +116,7 @@ export function FaithfulnessView() {
     return (
       <Card
         variant="subtle"
-        title="Could not load faithfulness"
+        title="Could not load testimonies"
         description="Please try again in a moment."
       />
     );
@@ -74,8 +128,8 @@ export function FaithfulnessView() {
         <Text style={styles.explanation}>{EXPLANATION}</Text>
         <Card
           variant="subtle"
-          title="Faithfulness grows over time"
-          description="Answered prayers and moments of God's goodness will appear here over time."
+          title="Testimonies grow over time"
+          description="Answered prayers and major moments of God's faithfulness will appear here over time."
         />
       </View>
     );
@@ -85,9 +139,15 @@ export function FaithfulnessView() {
     <View style={styles.container}>
       <Text style={styles.explanation}>{EXPLANATION}</Text>
 
-      {answered.length > 0 ? (
+      <TagFilterBar
+        tags={filterTags}
+        selectedId={selectedTagId}
+        onSelect={setSelectedTagId}
+      />
+
+      {visibleAnswered.length > 0 ? (
         <Section title="Answered prayers">
-          {answered.map((request) => (
+          {visibleAnswered.map((request) => (
             <ItemCard
               key={request.id}
               meta={
@@ -96,6 +156,7 @@ export function FaithfulnessView() {
                   : "Answered"
               }
               content={request.title}
+              tags={answeredTags.get(request.id)}
               accentColor={colors.answeredPrayerAccent}
               accessibilityLabel={`Open answered prayer: ${request.title}`}
               onPress={() =>
@@ -109,15 +170,16 @@ export function FaithfulnessView() {
         </Section>
       ) : null}
 
-      {wins.length > 0 ? (
-        <Section title="Faithfulness moments">
-          {wins.map((win) => (
+      {visibleWins.length > 0 ? (
+        <Section title="Testimonies">
+          {visibleWins.map((win) => (
             <ItemCard
               key={win.id}
               meta={winMetaLine(win)}
               content={contentPreview(win.content)}
+              tags={winTags.get(win.id)}
               accentColor={colors.accentGold}
-              accessibilityLabel={`Open faithfulness moment: ${contentPreview(
+              accessibilityLabel={`Open testimony: ${contentPreview(
                 win.content,
               )}`}
               onPress={() =>

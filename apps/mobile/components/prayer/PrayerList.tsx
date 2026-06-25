@@ -1,10 +1,13 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
-import type { PrayerRequest, PrayerRequestStatus } from "@graceward/shared";
+import type { PrayerRequest, PrayerRequestStatus, Tag } from "@graceward/shared";
 import { Card } from "@/components/ui/Card";
 import { PrayerRequestCard } from "@/components/prayer/PrayerRequestCard";
-import { listPrayerRequestsByStatus } from "@/lib/db";
+import { TagChips } from "@/components/tags/TagChips";
+import { TagFilterBar } from "@/components/tags/TagFilterBar";
+import { collectDistinctTags } from "@/lib/tag-display";
+import { listPrayerRequestsByStatus, listTagsForEntries } from "@/lib/db";
 import { colors, spacing } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error";
@@ -30,16 +33,25 @@ const emptyCopy: Record<
 
 export function PrayerList({ status }: { status: PrayerRequestStatus }) {
   const [requests, setRequests] = useState<PrayerRequest[]>([]);
+  const [tagMap, setTagMap] = useState<Map<string, Tag[]>>(new Map());
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       setLoadState((prev) => (prev === "ready" ? prev : "loading"));
+      // Reset any active tag filter when the status segment changes.
+      setSelectedTagId(null);
       listPrayerRequestsByStatus(status)
-        .then((rows) => {
+        .then(async (rows) => {
+          const map = await listTagsForEntries(
+            "prayer_request",
+            rows.map((row) => row.id),
+          );
           if (active) {
             setRequests(rows);
+            setTagMap(map);
             setLoadState("ready");
           }
         })
@@ -57,6 +69,16 @@ export function PrayerList({ status }: { status: PrayerRequestStatus }) {
       };
     }, [status]),
   );
+
+  const filterTags = useMemo(() => collectDistinctTags(tagMap), [tagMap]);
+  const visibleRequests = useMemo(() => {
+    if (!selectedTagId) {
+      return requests;
+    }
+    return requests.filter((request) =>
+      (tagMap.get(request.id) ?? []).some((tag) => tag.id === selectedTagId),
+    );
+  }, [requests, tagMap, selectedTagId]);
 
   if (loadState === "loading") {
     return (
@@ -85,18 +107,30 @@ export function PrayerList({ status }: { status: PrayerRequestStatus }) {
 
   return (
     <View style={styles.list}>
-      {requests.map((request) => (
-        <PrayerRequestCard
-          key={request.id}
-          request={request}
-          onPress={() =>
-            router.push({
-              pathname: "/prayer/[id]",
-              params: { id: request.id },
-            })
-          }
-        />
-      ))}
+      <TagFilterBar
+        tags={filterTags}
+        selectedId={selectedTagId}
+        onSelect={setSelectedTagId}
+      />
+      {visibleRequests.map((request) => {
+        const requestTags = tagMap.get(request.id);
+        return (
+          <View key={request.id} style={styles.cardGroup}>
+            <PrayerRequestCard
+              request={request}
+              onPress={() =>
+                router.push({
+                  pathname: "/prayer/[id]",
+                  params: { id: request.id },
+                })
+              }
+            />
+            {requestTags && requestTags.length > 0 ? (
+              <TagChips tags={requestTags} />
+            ) : null}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -108,5 +142,8 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.sm,
+  },
+  cardGroup: {
+    gap: spacing.xs,
   },
 });

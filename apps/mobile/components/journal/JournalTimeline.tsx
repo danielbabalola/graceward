@@ -1,16 +1,21 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
-import type { JournalEntry } from "@graceward/shared";
+import type { JournalEntry, Tag } from "@graceward/shared";
 import { Card } from "@/components/ui/Card";
 import { JournalEntryCard } from "@/components/journal/JournalEntryCard";
-import { listJournalEntries } from "@/lib/db";
+import { TagChips } from "@/components/tags/TagChips";
+import { TagFilterBar } from "@/components/tags/TagFilterBar";
+import { collectDistinctTags } from "@/lib/tag-display";
+import { listJournalEntries, listTagsForEntries } from "@/lib/db";
 import { colors, spacing } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error";
 
 export function JournalTimeline() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [tagMap, setTagMap] = useState<Map<string, Tag[]>>(new Map());
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
 
   useFocusEffect(
@@ -18,9 +23,14 @@ export function JournalTimeline() {
       let active = true;
       setLoadState((prev) => (prev === "ready" ? prev : "loading"));
       listJournalEntries()
-        .then((rows) => {
+        .then(async (rows) => {
+          const map = await listTagsForEntries(
+            "journal_entry",
+            rows.map((row) => row.id),
+          );
           if (active) {
             setEntries(rows);
+            setTagMap(map);
             setLoadState("ready");
           }
         })
@@ -38,6 +48,16 @@ export function JournalTimeline() {
       };
     }, []),
   );
+
+  const filterTags = useMemo(() => collectDistinctTags(tagMap), [tagMap]);
+  const visibleEntries = useMemo(() => {
+    if (!selectedTagId) {
+      return entries;
+    }
+    return entries.filter((entry) =>
+      (tagMap.get(entry.id) ?? []).some((tag) => tag.id === selectedTagId),
+    );
+  }, [entries, tagMap, selectedTagId]);
 
   if (loadState === "loading") {
     return (
@@ -69,18 +89,30 @@ export function JournalTimeline() {
 
   return (
     <View style={styles.list}>
-      {entries.map((entry) => (
-        <JournalEntryCard
-          key={entry.id}
-          entry={entry}
-          onPress={() =>
-            router.push({
-              pathname: "/journal/[id]",
-              params: { id: entry.id },
-            })
-          }
-        />
-      ))}
+      <TagFilterBar
+        tags={filterTags}
+        selectedId={selectedTagId}
+        onSelect={setSelectedTagId}
+      />
+      {visibleEntries.map((entry) => {
+        const entryTags = tagMap.get(entry.id);
+        return (
+          <View key={entry.id} style={styles.cardGroup}>
+            <JournalEntryCard
+              entry={entry}
+              onPress={() =>
+                router.push({
+                  pathname: "/journal/[id]",
+                  params: { id: entry.id },
+                })
+              }
+            />
+            {entryTags && entryTags.length > 0 ? (
+              <TagChips tags={entryTags} />
+            ) : null}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -92,5 +124,8 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.sm,
+  },
+  cardGroup: {
+    gap: spacing.xs,
   },
 });

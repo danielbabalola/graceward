@@ -7,6 +7,7 @@ import type {
 } from "@graceward/shared";
 import { getDatabase } from "./client";
 import { toLocalDateString } from "./helpers";
+import { listTagsForEntry, setEntryTags } from "./tags";
 
 type PrayerRequestRow = {
   id: string;
@@ -82,6 +83,10 @@ export async function createPrayerRequest(
       request.deletedAt,
     ],
   );
+
+  if (input.tags && input.tags.length > 0) {
+    await setEntryTags("prayer_request", request.id, input.tags);
+  }
 
   return request;
 }
@@ -212,7 +217,17 @@ export async function updatePrayerRequest(
     values,
   );
 
+  if (input.tags !== undefined) {
+    await setEntryTags("prayer_request", id, input.tags);
+  }
+
   return getPrayerRequestById(id);
+}
+
+/** Tag names currently applied to a prayer request. */
+export async function getPrayerRequestTagNames(id: string): Promise<string[]> {
+  const tags = await listTagsForEntry("prayer_request", id);
+  return tags.map((tag) => tag.name);
 }
 
 export async function markPrayerRequestAnswered(

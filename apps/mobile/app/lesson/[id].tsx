@@ -10,18 +10,23 @@ import {
   View,
 } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import type { Lesson } from "@graceward/shared";
+import type { Lesson, Tag } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
+import { TagChips } from "@/components/tags/TagChips";
+import { TagEditor } from "@/components/tags/TagEditor";
 import {
   archiveLesson,
   getLessonById,
+  listTagsForEntry,
   reactivateLesson,
+  sameTagNameSet,
   softDeleteLesson,
   updateLesson,
 } from "@/lib/db";
 import { lessonMetaLine } from "@/lib/lesson-display";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error" | "not-found";
@@ -30,15 +35,25 @@ export default function LessonDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [editing, setEditing] = useState(false);
 
   const [titleDraft, setTitleDraft] = useState("");
   const [contentDraft, setContentDraft] = useState("");
-  const [themeDraft, setThemeDraft] = useState("");
+  const [tagsDraft, setTagsDraft] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  useUnsavedChangesGuard(
+    editing &&
+      !saving &&
+      lesson != null &&
+      (titleDraft !== lesson.title ||
+        contentDraft !== lesson.content ||
+        !sameTagNameSet(tagsDraft, tags.map((tag) => tag.name))),
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -60,6 +75,7 @@ export default function LessonDetailScreen() {
             return;
           }
           setLesson(result);
+          setTags(await listTagsForEntry("lesson", id));
           setLoadState("ready");
         } catch (error: unknown) {
           if (active) {
@@ -84,7 +100,7 @@ export default function LessonDetailScreen() {
     }
     setTitleDraft(lesson.title);
     setContentDraft(lesson.content);
-    setThemeDraft(lesson.theme ?? "");
+    setTagsDraft(tags.map((tag) => tag.name));
     setEditing(true);
   }
 
@@ -102,11 +118,12 @@ export default function LessonDetailScreen() {
       const updated = await updateLesson(lesson.id, {
         title: titleDraft.trim(),
         content: contentDraft.trim(),
-        theme: themeDraft.trim().length > 0 ? themeDraft.trim() : null,
+        tags: tagsDraft,
       });
       if (updated) {
         setLesson(updated);
       }
+      setTags(await listTagsForEntry("lesson", lesson.id));
       setEditing(false);
     } catch (error: unknown) {
       console.warn(
@@ -251,17 +268,11 @@ export default function LessonDetailScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Theme (optional)</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                value={themeDraft}
-                onChangeText={setThemeDraft}
-                placeholder="e.g. Trust, Patience, Surrender"
-                placeholderTextColor={colors.textSubtle}
-                style={styles.singleLineInput}
-                accessibilityLabel="Lesson theme"
-              />
-            </View>
+            <TagEditor
+              value={tagsDraft}
+              onChange={setTagsDraft}
+              placeholder="e.g. Trust, Patience, Surrender"
+            />
           </View>
 
           <Button
@@ -292,6 +303,17 @@ export default function LessonDetailScreen() {
       <View style={styles.bodyCard}>
         <Text style={styles.body}>{lesson.content}</Text>
       </View>
+
+      {tags.length > 0 ? (
+        <View style={styles.tagsBlock}>
+          <TagChips
+            tags={tags}
+            onPressTag={(tag) =>
+              router.push({ pathname: "/tags/[id]", params: { id: tag.id } })
+            }
+          />
+        </View>
+      ) : null}
 
       {lesson.sourceJournalEntryId ? (
         <SourceReflectionLink journalEntryId={lesson.sourceJournalEntryId} />
@@ -338,6 +360,9 @@ const styles = StyleSheet.create({
   body: {
     ...typography.body,
     color: colors.text,
+  },
+  tagsBlock: {
+    marginBottom: spacing.md,
   },
   privacyLine: {
     ...typography.bodySmall,

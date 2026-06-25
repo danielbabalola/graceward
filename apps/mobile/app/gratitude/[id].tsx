@@ -10,16 +10,21 @@ import {
   View,
 } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import type { Gratitude } from "@graceward/shared";
+import type { Gratitude, Tag } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
+import { TagChips } from "@/components/tags/TagChips";
+import { TagEditor } from "@/components/tags/TagEditor";
 import {
   getGratitudeById,
+  listTagsForEntry,
+  sameTagNameSet,
   softDeleteGratitude,
   updateGratitude,
 } from "@/lib/db";
 import { formatItemDate } from "@/lib/gratitude-display";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error" | "not-found";
@@ -28,13 +33,22 @@ export default function GratitudeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [gratitude, setGratitude] = useState<Gratitude | null>(null);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [editing, setEditing] = useState(false);
 
   const [contentDraft, setContentDraft] = useState("");
-  const [categoryDraft, setCategoryDraft] = useState("");
+  const [tagsDraft, setTagsDraft] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  useUnsavedChangesGuard(
+    editing &&
+      !saving &&
+      gratitude != null &&
+      (contentDraft !== gratitude.content ||
+        !sameTagNameSet(tagsDraft, tags.map((tag) => tag.name))),
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -56,6 +70,7 @@ export default function GratitudeDetailScreen() {
             return;
           }
           setGratitude(result);
+          setTags(await listTagsForEntry("gratitude", id));
           setLoadState("ready");
         } catch (error: unknown) {
           if (active) {
@@ -79,7 +94,7 @@ export default function GratitudeDetailScreen() {
       return;
     }
     setContentDraft(gratitude.content);
-    setCategoryDraft(gratitude.category ?? "");
+    setTagsDraft(tags.map((tag) => tag.name));
     setEditing(true);
   }
 
@@ -91,11 +106,12 @@ export default function GratitudeDetailScreen() {
     try {
       const updated = await updateGratitude(gratitude.id, {
         content: contentDraft.trim(),
-        category: categoryDraft.trim().length > 0 ? categoryDraft.trim() : null,
+        tags: tagsDraft,
       });
       if (updated) {
         setGratitude(updated);
       }
+      setTags(await listTagsForEntry("gratitude", gratitude.id));
       setEditing(false);
     } catch (error: unknown) {
       console.warn(
@@ -205,17 +221,11 @@ export default function GratitudeDetailScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Category (optional)</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                value={categoryDraft}
-                onChangeText={setCategoryDraft}
-                placeholder="e.g. Family, Provision, Health"
-                placeholderTextColor={colors.textSubtle}
-                style={styles.singleLineInput}
-                accessibilityLabel="Gratitude category"
-              />
-            </View>
+            <TagEditor
+              value={tagsDraft}
+              onChange={setTagsDraft}
+              placeholder="e.g. Family, Provision, Health"
+            />
           </View>
 
           <Button
@@ -237,15 +247,25 @@ export default function GratitudeDetailScreen() {
     );
   }
 
-  const metaLine = gratitude.category?.trim()
-    ? `${formatItemDate(gratitude.createdAt)} · ${gratitude.category}`
-    : formatItemDate(gratitude.createdAt);
-
   return (
-    <FlowScreen title="Gratitude" subtitle={metaLine}>
+    <FlowScreen
+      title="Gratitude"
+      subtitle={formatItemDate(gratitude.createdAt)}
+    >
       <View style={styles.bodyCard}>
         <Text style={styles.body}>{gratitude.content}</Text>
       </View>
+
+      {tags.length > 0 ? (
+        <View style={styles.tagsBlock}>
+          <TagChips
+            tags={tags}
+            onPressTag={(tag) =>
+              router.push({ pathname: "/tags/[id]", params: { id: tag.id } })
+            }
+          />
+        </View>
+      ) : null}
 
       {gratitude.journalEntryId ? (
         <SourceReflectionLink journalEntryId={gratitude.journalEntryId} />
@@ -286,6 +306,9 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
   },
+  tagsBlock: {
+    marginBottom: spacing.md,
+  },
   privacyLine: {
     ...typography.bodySmall,
     color: colors.textSubtle,
@@ -310,10 +333,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     minHeight: 120,
-  },
-  singleLineInput: {
-    ...typography.body,
-    color: colors.text,
   },
   action: {
     marginBottom: spacing.sm,

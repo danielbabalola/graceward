@@ -4,16 +4,17 @@ import DateTimePicker, {
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { Button } from "@/components/ui/Button";
+import { TagEditor } from "@/components/tags/TagEditor";
 import { formatEntryDate } from "@/lib/journal-display";
 import { colors, radii, shadows, spacing, touchTarget, typography } from "@/theme/tokens";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-/** The editable shape of a suggestion. Unused fields are "" / null. */
+/** The editable shape of a suggestion. Unused fields are "" / [] / null. */
 export type SuggestionDraft = {
   title: string;
   description: string;
-  tag: string;
+  tags: string[];
   followUpAt: string | null;
 };
 
@@ -24,10 +25,16 @@ type SuggestionCardProps = {
   titleMultiline?: boolean;
   /** When set, a multiline description field is shown (prayer only). */
   descriptionLabel?: string;
-  /** When set, an editable tag/category field is shown (shown as eyebrow). */
-  tagLabel?: string;
-  /** When true, an editable follow-up date field is shown (prayer only). */
+  /** When true, a multi-tag editor is shown and tags display as chips. */
+  supportsTags?: boolean;
+  /** When true, an editable follow-up date field is shown. */
   supportsFollowUp?: boolean;
+  /** Field label for the date field (e.g. "Follow-up date", "By when"). */
+  followUpLabel?: string;
+  /** Read-mode prefix for the date summary (e.g. "Follow-up", "By when"). */
+  followUpSummaryLabel?: string;
+  /** Placeholder shown on the empty date chip. */
+  followUpPlaceholder?: string;
   initial: SuggestionDraft;
   status: SaveStatus;
   saveLabel: string;
@@ -67,8 +74,11 @@ export function SuggestionCard({
   titleLabel,
   titleMultiline = false,
   descriptionLabel,
-  tagLabel,
+  supportsTags = false,
   supportsFollowUp = false,
+  followUpLabel = "Follow-up date",
+  followUpSummaryLabel = "Follow-up",
+  followUpPlaceholder = "Add a follow-up date",
   initial,
   status,
   saveLabel,
@@ -78,7 +88,7 @@ export function SuggestionCard({
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
-  const [tag, setTag] = useState(initial.tag);
+  const [tags, setTags] = useState<string[]>(initial.tags);
   const [followUp, setFollowUp] = useState(initial.followUpAt ?? "");
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -93,7 +103,7 @@ export function SuggestionCard({
     // Revert any in-progress edits back to the last committed values.
     setTitle(initial.title);
     setDescription(initial.description);
-    setTag(initial.tag);
+    setTags(initial.tags);
     setFollowUp(initial.followUpAt ?? "");
     setValidationError(null);
     setEditing(false);
@@ -117,7 +127,7 @@ export function SuggestionCard({
     onSave({
       title: trimmedTitle,
       description: description.trim(),
-      tag: tag.trim(),
+      tags,
       followUpAt:
         supportsFollowUp && trimmedFollowUp.length > 0 ? trimmedFollowUp : null,
     });
@@ -126,17 +136,8 @@ export function SuggestionCard({
   if (editing) {
     return (
       <View style={styles.card}>
-        {tagLabel ? (
-          <Field label={tagLabel}>
-            <TextInput
-              value={tag}
-              onChangeText={setTag}
-              placeholder="Optional"
-              placeholderTextColor={colors.textSubtle}
-              style={styles.input}
-              accessibilityLabel={tagLabel}
-            />
-          </Field>
+        {supportsTags ? (
+          <TagEditor value={tags} onChange={setTags} label="Tags (optional)" />
         ) : null}
 
         <Field label={titleLabel}>
@@ -165,7 +166,12 @@ export function SuggestionCard({
         ) : null}
 
         {supportsFollowUp ? (
-          <FollowUpDateField value={followUp} onChange={setFollowUp} />
+          <FollowUpDateField
+            value={followUp}
+            onChange={setFollowUp}
+            label={followUpLabel}
+            placeholder={followUpPlaceholder}
+          />
         ) : null}
 
         {validationError ? (
@@ -192,14 +198,22 @@ export function SuggestionCard({
 
   return (
     <View style={styles.card}>
-      {tag ? <Text style={styles.eyebrow}>{tag}</Text> : null}
       <Text style={styles.title}>{title}</Text>
       {description ? (
         <Text style={styles.description}>{description}</Text>
       ) : null}
+      {tags.length > 0 ? (
+        <View style={styles.tagRow}>
+          {tags.map((name) => (
+            <View key={name} style={styles.tagChip}>
+              <Text style={styles.tagChipText}>{name}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
       {supportsFollowUp && followUp ? (
         <Text style={styles.footnote}>
-          Follow-up: {formatEntryDate(followUp)}
+          {followUpSummaryLabel}: {formatEntryDate(followUp)}
         </Text>
       ) : null}
 
@@ -234,7 +248,7 @@ export function SuggestionCard({
     return {
       title: title.trim(),
       description: description.trim(),
-      tag: tag.trim(),
+      tags,
       followUpAt:
         supportsFollowUp && trimmedFollowUp.length > 0 ? trimmedFollowUp : null,
     };
@@ -259,9 +273,13 @@ function Field({
 function FollowUpDateField({
   value,
   onChange,
+  label,
+  placeholder,
 }: {
   value: string;
   onChange: (next: string) => void;
+  label: string;
+  placeholder: string;
 }) {
   const [showPicker, setShowPicker] = useState(false);
   const selected = value ? parseIsoDate(value) : null;
@@ -278,7 +296,7 @@ function FollowUpDateField({
 
   return (
     <View style={styles.field}>
-      <Text style={styles.fieldLabel}>Follow-up date</Text>
+      <Text style={styles.fieldLabel}>{label}</Text>
       <View style={styles.dateRow}>
         <Pressable
           onPress={() => setShowPicker(true)}
@@ -286,7 +304,7 @@ function FollowUpDateField({
           style={styles.dateChip}
         >
           <Text style={selected ? styles.dateChipText : styles.dateChipPlaceholder}>
-            {selected ? formatEntryDate(value) : "Add a follow-up date"}
+            {selected ? formatEntryDate(value) : placeholder}
           </Text>
         </Pressable>
         {selected ? (
@@ -343,14 +361,25 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     ...shadows.card,
   },
-  eyebrow: {
-    ...typography.caption,
-    color: colors.textSubtle,
-    textTransform: "uppercase",
-  },
   title: {
     ...typography.cardTitle,
     color: colors.text,
+  },
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  tagChip: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radii.xl,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  tagChipText: {
+    ...typography.bodySmall,
+    color: colors.primaryDeep,
+    fontWeight: "500",
   },
   description: {
     ...typography.bodySmall,

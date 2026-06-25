@@ -14,8 +14,10 @@ import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
+import { TagEditor } from "@/components/tags/TagEditor";
 import { createWin, toLocalDateString } from "@/lib/db";
-import { hasTypedEntryContent } from "@/lib/voice-entry-fields";
+import { hasTypedEntryContent, suggestionTags } from "@/lib/voice-entry-fields";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function NewWinScreen() {
@@ -23,17 +25,20 @@ export default function NewWinScreen() {
     sourceJournalEntryId?: string;
   }>();
   const [content, setContent] = useState("");
-  const [theme, setTheme] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const canSave = content.trim().length > 0 && !saving;
+  const { allowNextNavigation } = useUnsavedChangesGuard(
+    !saving && (hasTypedEntryContent([content]) || tags.length > 0),
+  );
 
   function handleStructured(result: StructureVoiceEntryResponse) {
     if (result.entryType !== "faithfulness") {
       return;
     }
     setContent(result.fields.content);
-    setTheme(result.fields.faithfulnessTheme ?? "");
+    setTags(suggestionTags(result.fields));
   }
 
   async function handleSave() {
@@ -44,10 +49,11 @@ export default function NewWinScreen() {
     try {
       await createWin({
         content: content.trim(),
-        faithfulnessTheme: theme.trim().length > 0 ? theme.trim() : null,
+        tags,
         journalEntryId: sourceJournalEntryId ?? null,
         syncStatus: "local_only",
       });
+      allowNextNavigation();
       router.replace({
         pathname: "/(tabs)/gratitude",
         params: { segment: "faithfulness" },
@@ -60,7 +66,7 @@ export default function NewWinScreen() {
       );
       Alert.alert(
         "Could not save",
-        "This faithfulness moment could not be saved just now. Please try again.",
+        "This testimony could not be saved just now. Please try again.",
       );
       setSaving(false);
     }
@@ -68,8 +74,8 @@ export default function NewWinScreen() {
 
   return (
     <FlowScreen
-      title="Add faithfulness moment"
-      subtitle="Notice where you saw God's goodness — His provision, growth, help, or an answered prayer."
+      title="Add testimony"
+      subtitle="Mark a major moment of God's faithfulness — His provision, a milestone, deliverance, or an answered prayer."
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -85,7 +91,7 @@ export default function NewWinScreen() {
           entryType="faithfulness"
           entryDate={toLocalDateString(new Date())}
           onStructured={handleStructured}
-          hasExistingInput={hasTypedEntryContent([content, theme])}
+          hasExistingInput={hasTypedEntryContent([content]) || tags.length > 0}
         />
 
         <View style={styles.field}>
@@ -100,28 +106,22 @@ export default function NewWinScreen() {
               autoFocus
               textAlignVertical="top"
               style={styles.contentInput}
-              accessibilityLabel="Faithfulness moment"
+              accessibilityLabel="Testimony"
             />
           </View>
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Faithfulness theme (optional)</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              value={theme}
-              onChangeText={setTheme}
-              placeholder="e.g. Provision, Healing, Perseverance"
-              placeholderTextColor={colors.textSubtle}
-              style={styles.singleLineInput}
-              accessibilityLabel="Faithfulness theme"
-            />
-          </View>
+          <TagEditor
+            value={tags}
+            onChange={setTags}
+            placeholder="e.g. Provision, Healing, Perseverance"
+          />
         </View>
 
         <Text style={styles.hint}>Saved privately on this device only.</Text>
         <Button
-          label="Save faithfulness moment"
+          label="Save testimony"
           onPress={handleSave}
           disabled={!canSave}
           loading={saving}
@@ -151,10 +151,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     minHeight: 120,
-  },
-  singleLineInput: {
-    ...typography.body,
-    color: colors.text,
   },
   hint: {
     ...typography.bodySmall,

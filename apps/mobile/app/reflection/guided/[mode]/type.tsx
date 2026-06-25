@@ -13,6 +13,7 @@ import {
   type GuidedAnswers,
 } from "@/lib/reflection-flow";
 import { resolveInitialEntryDate } from "@/lib/reflection-date";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { buildGuidedTextPayload } from "@/lib/guided-payload";
 
 export default function GuidedTypeScreen() {
@@ -23,6 +24,8 @@ export default function GuidedTypeScreen() {
   const [entryDate, setEntryDate] = useState(() =>
     resolveInitialEntryDate(entryDateParam),
   );
+  const [dirty, setDirty] = useState(false);
+  const { allowNextNavigation } = useUnsavedChangesGuard(dirty);
 
   if (!mode || !isGuidedMode(mode)) {
     return <Redirect href="/reflection/guided/mode" />;
@@ -44,6 +47,7 @@ export default function GuidedTypeScreen() {
       status: "saved",
       syncStatus: "local_only",
     });
+    allowNextNavigation();
     router.replace("/(tabs)/journal");
   }
 
@@ -54,6 +58,7 @@ export default function GuidedTypeScreen() {
         config={config}
         saveLabel="Save reflection"
         onSave={handleSave}
+        onDirtyChange={setDirty}
         onError={handleReflectionSaveError}
       />
     </FlowScreen>

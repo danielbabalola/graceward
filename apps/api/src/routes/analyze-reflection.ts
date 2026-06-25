@@ -6,6 +6,11 @@ import {
 import { createOpenAiProvider } from "../ai/openai-provider.js";
 import { AiError, type ReflectionAnalysisProvider } from "../ai/types.js";
 import {
+  analysisOutputText,
+  contentFlaggedError,
+  createModerationGuard,
+} from "../ai/moderation.js";
+import {
   ensureAiEnabled,
   ensureWithinQuota,
   resolveInstallId,
@@ -78,6 +83,35 @@ export function registerAnalyzeReflectionRoute(
         return;
       }
 
+      // Input moderation gate. Runs before the paid analysis call. Fails open on
+      // a moderation outage so the pastoral path is never silently broken; a
+      // genuine block returns a calm CONTENT_FLAGGED. Never logs the content or
+      // its category scores — only the non-sensitive category names that fired.
+      const moderation = createModerationGuard();
+      if (moderation) {
+        const outcome = await moderation.check(parsed.data.rawText);
+        if (outcome.status === "blocked") {
+          request.log.warn(
+            {
+              requestId: request.id,
+              code: "CONTENT_FLAGGED",
+              stage: "input",
+              categories: outcome.categories,
+            },
+            "reflection input flagged by moderation",
+          );
+          const err = contentFlaggedError();
+          sendError(reply, request, err.httpStatus, err.code, err.message);
+          return;
+        }
+        if (outcome.status === "unavailable") {
+          request.log.warn(
+            { requestId: request.id, code: "MODERATION_UNAVAILABLE", stage: "input" },
+            "input moderation unavailable; proceeding",
+          );
+        }
+      }
+
       let provider: ReflectionAnalysisProvider;
       try {
         provider = createOpenAiProvider();
@@ -92,8 +126,30 @@ export function registerAnalyzeReflectionRoute(
       try {
         const result: AnalyzeReflectionResponse =
           await provider.analyze(parsed.data);
-        // Count the call only after a successful paid provider response.
+        // Count the call now — the paid provider call already happened, so the
+        // cost is incurred regardless of the output moderation result below.
         quota.record(installId, "analyze");
+
+        // Output moderation: don't return model-authored text that trips a
+        // blocking category. Fails open on outage (same rationale as input).
+        if (moderation) {
+          const outcome = await moderation.check(analysisOutputText(result));
+          if (outcome.status === "blocked") {
+            request.log.warn(
+              {
+                requestId: request.id,
+                code: "CONTENT_FLAGGED",
+                stage: "output",
+                categories: outcome.categories,
+              },
+              "reflection output flagged by moderation",
+            );
+            const err = contentFlaggedError();
+            sendError(reply, request, err.httpStatus, err.code, err.message);
+            return;
+          }
+        }
+
         // Log only non-sensitive metadata — never the reflection or AI content.
         request.log.info(
           { requestId: request.id, provider: provider.name, model: provider.model },

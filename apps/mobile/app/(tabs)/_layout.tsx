@@ -1,11 +1,27 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { colors, typography } from "@/theme/tokens";
+import { StyleSheet, View } from "react-native";
+import { colors, shadows, typography } from "@/theme/tokens";
 
 type TabIconName = keyof typeof Ionicons.glyphMap;
 
 function TabIcon({ name, color }: { name: TabIconName; color: string }) {
   return <Ionicons name={name} size={22} color={color} />;
+}
+
+/**
+ * Raised, arched icon for the Today tab. The circle is absolutely positioned
+ * inside a normal-sized icon footprint so it floats above the bar while the
+ * default label below stays aligned with the other tabs. Turns gold when active.
+ */
+function CenterTabIcon({ focused }: { focused: boolean }) {
+  return (
+    <View style={styles.centerSlot}>
+      <View style={[styles.centerButton, focused && styles.centerButtonFocused]}>
+        <Ionicons name="sunny" size={24} color={colors.white} />
+      </View>
+    </View>
+  );
 }
 
 export default function TabLayout() {
@@ -29,13 +45,6 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="today"
-        options={{
-          title: "Today",
-          tabBarIcon: ({ color }) => <TabIcon name="sunny-outline" color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="journal"
         options={{
           title: "Journal",
@@ -47,6 +56,13 @@ export default function TabLayout() {
         options={{
           title: "Prayer",
           tabBarIcon: ({ color }) => <TabIcon name="heart-outline" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="today"
+        options={{
+          title: "Today",
+          tabBarIcon: ({ focused }) => <CenterTabIcon focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -70,3 +86,33 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  centerSlot: {
+    width: 22,
+    height: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  centerButton: {
+    position: "absolute",
+    bottom: 0,
+    left: "50%",
+    marginLeft: -24,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primaryDeep,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 4,
+    borderColor: colors.backgroundCream,
+    ...shadows.card,
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  centerButtonFocused: {
+    backgroundColor: colors.accentGold,
+  },
+});

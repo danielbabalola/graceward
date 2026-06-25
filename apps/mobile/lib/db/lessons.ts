@@ -6,6 +6,14 @@ import type {
   UpdateLessonInput,
 } from "@graceward/shared";
 import { getDatabase } from "./client";
+import { listTagsForEntry, setEntryTags } from "./tags";
+
+function legacyTagNames(input: { tags?: string[]; theme?: string | null }): string[] {
+  if (input.tags !== undefined) {
+    return input.tags;
+  }
+  return input.theme ? [input.theme] : [];
+}
 
 type LessonRow = {
   id: string;
@@ -43,7 +51,8 @@ export async function createLesson(input: CreateLessonInput): Promise<Lesson> {
     id: Crypto.randomUUID(),
     title: input.title,
     content: input.content,
-    theme: input.theme ?? null,
+    // Legacy column is no longer written; tags are the source of truth.
+    theme: null,
     sourceJournalEntryId: input.sourceJournalEntryId ?? null,
     status: input.status ?? "active",
     syncStatus: input.syncStatus ?? "local_only",
@@ -70,6 +79,11 @@ export async function createLesson(input: CreateLessonInput): Promise<Lesson> {
       lesson.deletedAt,
     ],
   );
+
+  const tagNames = legacyTagNames(input);
+  if (tagNames.length > 0) {
+    await setEntryTags("lesson", lesson.id, tagNames);
+  }
 
   return lesson;
 }
@@ -147,10 +161,6 @@ export async function updateLesson(
     sets.push("content = ?");
     values.push(input.content);
   }
-  if (input.theme !== undefined) {
-    sets.push("theme = ?");
-    values.push(input.theme);
-  }
 
   sets.push("updated_at = ?");
   values.push(new Date().toISOString());
@@ -162,7 +172,17 @@ export async function updateLesson(
     values,
   );
 
+  if (input.tags !== undefined || input.theme !== undefined) {
+    await setEntryTags("lesson", id, legacyTagNames(input));
+  }
+
   return getLessonById(id);
+}
+
+/** Tag names currently applied to a lesson. */
+export async function getLessonTagNames(id: string): Promise<string[]> {
+  const tags = await listTagsForEntry("lesson", id);
+  return tags.map((tag) => tag.name);
 }
 
 export async function archiveLesson(id: string): Promise<Lesson | null> {

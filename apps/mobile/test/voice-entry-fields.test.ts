@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   hasTypedEntryContent,
   safeFollowUpDate,
+  suggestionTags,
 } from "@/lib/voice-entry-fields";
 
 describe("hasTypedEntryContent", () => {
@@ -56,5 +57,27 @@ describe("safeFollowUpDate", () => {
 
   it("trims surrounding whitespace before validating", () => {
     expect(safeFollowUpDate("  2026-06-29  ", today)).toBe("2026-06-29");
+  });
+});
+
+describe("suggestionTags", () => {
+  it("prefers the unified tags array when present", () => {
+    expect(suggestionTags({ tags: ["Family", "Provision"] })).toEqual([
+      "Family",
+      "Provision",
+    ]);
+  });
+
+  it("falls back to a legacy single field when no tags array", () => {
+    expect(suggestionTags({ category: "Health" })).toEqual(["Health"]);
+    expect(suggestionTags({ theme: "Trust" })).toEqual(["Trust"]);
+    expect(suggestionTags({ faithfulnessTheme: "Healing" })).toEqual([
+      "Healing",
+    ]);
+  });
+
+  it("returns an empty array when nothing is present", () => {
+    expect(suggestionTags({})).toEqual([]);
+    expect(suggestionTags({ tags: [] })).toEqual([]);
   });
 });

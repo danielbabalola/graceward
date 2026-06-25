@@ -2,6 +2,7 @@ import {
   analyzeReflectionResponseSchema,
   MAX_FOLLOW_UP_QUESTIONS,
   MAX_SUGGESTIONS_PER_KIND,
+  MAX_TAGS_PER_ENTRY,
   type AnalyzeReflectionResponse,
 } from "@graceward/ai-schemas";
 import { buildUserPrompt, REFLECTION_SYSTEM_PROMPT } from "./prompt.js";
@@ -170,6 +171,14 @@ function extractMessageContent(payload: unknown): string | null {
   return typeof content === "string" ? content : null;
 }
 
+/** Caps a suggestion's optional tag array to the per-entry maximum. */
+function clampTags<T extends { tags?: string[] }>(item: T): T {
+  if (!item.tags) {
+    return item;
+  }
+  return { ...item, tags: item.tags.slice(0, MAX_TAGS_PER_ENTRY) };
+}
+
 /** Defensive cap on list sizes regardless of what the model returns. Exported
  * for unit testing the caps in isolation. */
 export function clampResult(
@@ -177,19 +186,21 @@ export function clampResult(
 ): AnalyzeReflectionResponse {
   return {
     ...result,
-    prayerSuggestions: result.prayerSuggestions.slice(
-      0,
-      MAX_SUGGESTIONS_PER_KIND,
-    ),
-    gratitudeSuggestions: result.gratitudeSuggestions.slice(
-      0,
-      MAX_SUGGESTIONS_PER_KIND,
-    ),
-    faithfulnessMomentSuggestions: result.faithfulnessMomentSuggestions.slice(
-      0,
-      MAX_SUGGESTIONS_PER_KIND,
-    ),
-    lessonSuggestions: result.lessonSuggestions.slice(0, MAX_SUGGESTIONS_PER_KIND),
+    prayerSuggestions: result.prayerSuggestions
+      .slice(0, MAX_SUGGESTIONS_PER_KIND)
+      .map(clampTags),
+    gratitudeSuggestions: result.gratitudeSuggestions
+      .slice(0, MAX_SUGGESTIONS_PER_KIND)
+      .map(clampTags),
+    faithfulnessMomentSuggestions: result.faithfulnessMomentSuggestions
+      .slice(0, MAX_SUGGESTIONS_PER_KIND)
+      .map(clampTags),
+    lessonSuggestions: result.lessonSuggestions
+      .slice(0, MAX_SUGGESTIONS_PER_KIND)
+      .map(clampTags),
+    instructionSuggestions: result.instructionSuggestions
+      .slice(0, MAX_SUGGESTIONS_PER_KIND)
+      .map(clampTags),
     gentleFollowUpQuestions: result.gentleFollowUpQuestions.slice(
       0,
       MAX_FOLLOW_UP_QUESTIONS,

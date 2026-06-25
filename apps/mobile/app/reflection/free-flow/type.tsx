@@ -14,6 +14,7 @@ import { ReflectionDateSelector } from "@/components/reflection/ReflectionDateSe
 import { createJournalEntry } from "@/lib/db";
 import { handleReflectionSaveError } from "@/lib/reflection-save";
 import { resolveInitialEntryDate } from "@/lib/reflection-date";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function FreeFlowTypeScreen() {
@@ -27,6 +28,9 @@ export default function FreeFlowTypeScreen() {
   const [saving, setSaving] = useState(false);
 
   const canSave = text.trim().length > 0 && !saving;
+  const { allowNextNavigation } = useUnsavedChangesGuard(
+    !saving && text.trim().length > 0,
+  );
 
   async function handleSave() {
     const trimmed = text.trim();
@@ -45,6 +49,7 @@ export default function FreeFlowTypeScreen() {
         status: "saved",
         syncStatus: "local_only",
       });
+      allowNextNavigation();
       router.replace("/(tabs)/journal");
     } catch (error: unknown) {
       handleReflectionSaveError(error);

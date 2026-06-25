@@ -26,14 +26,15 @@ export function contentPreview(content: string): string {
   return `${firstLine.slice(0, MAX_PREVIEW_LENGTH).trimEnd()}…`;
 }
 
+/**
+ * Meta line for a gratitude card. Tags are shown separately as chips, so the
+ * meta is just the date.
+ */
 export function gratitudeMetaLine(gratitude: Gratitude): string {
-  const date = formatItemDate(gratitude.createdAt);
-  const category = gratitude.category?.trim();
-  return category ? `${date} · ${category}` : date;
+  return formatItemDate(gratitude.createdAt);
 }
 
+/** Meta line for a faithfulness moment card (date only; tags shown as chips). */
 export function winMetaLine(win: Win): string {
-  const date = formatItemDate(win.createdAt);
-  const theme = win.faithfulnessTheme?.trim();
-  return theme ? `${date} · ${theme}` : date;
+  return formatItemDate(win.createdAt);
 }

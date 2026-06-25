@@ -5,6 +5,15 @@ import type {
   UpdateGratitudeInput,
 } from "@graceward/shared";
 import { getDatabase } from "./client";
+import { listTagsForEntry, setEntryTags } from "./tags";
+
+/** Names of the tags applied to a gratitude (replaces the old `category`). */
+function legacyTagNames(input: { tags?: string[]; category?: string | null }): string[] {
+  if (input.tags !== undefined) {
+    return input.tags;
+  }
+  return input.category ? [input.category] : [];
+}
 
 type GratitudeRow = {
   id: string;
@@ -40,7 +49,8 @@ export async function createGratitude(
     id: Crypto.randomUUID(),
     journalEntryId: input.journalEntryId ?? null,
     content: input.content,
-    category: input.category ?? null,
+    // Legacy column is no longer written; tags are the source of truth.
+    category: null,
     syncStatus: input.syncStatus ?? "local_only",
     createdAt: nowIso,
     updatedAt: nowIso,
@@ -63,6 +73,11 @@ export async function createGratitude(
       gratitude.deletedAt,
     ],
   );
+
+  const tagNames = legacyTagNames(input);
+  if (tagNames.length > 0) {
+    await setEntryTags("gratitude", gratitude.id, tagNames);
+  }
 
   return gratitude;
 }
@@ -136,10 +151,6 @@ export async function updateGratitude(
     sets.push("content = ?");
     values.push(input.content);
   }
-  if (input.category !== undefined) {
-    sets.push("category = ?");
-    values.push(input.category);
-  }
 
   sets.push("updated_at = ?");
   values.push(new Date().toISOString());
@@ -151,7 +162,17 @@ export async function updateGratitude(
     values,
   );
 
+  if (input.tags !== undefined || input.category !== undefined) {
+    await setEntryTags("gratitude", id, legacyTagNames(input));
+  }
+
   return getGratitudeById(id);
+}
+
+/** Tag names currently applied to a gratitude. */
+export async function getGratitudeTagNames(id: string): Promise<string[]> {
+  const tags = await listTagsForEntry("gratitude", id);
+  return tags.map((tag) => tag.name);
 }
 
 export async function softDeleteGratitude(id: string): Promise<void> {

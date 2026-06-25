@@ -10,20 +10,25 @@ import {
   View,
 } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import type { PrayerRequest } from "@graceward/shared";
+import type { PrayerRequest, Tag } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
 import { DateSelector } from "@/components/ui/DateSelector";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
+import { TagChips } from "@/components/tags/TagChips";
+import { TagEditor } from "@/components/tags/TagEditor";
 import {
   archivePrayerRequest,
   getPrayerRequestById,
+  listTagsForEntry,
   markPrayerRequestAnswered,
   reactivatePrayerRequest,
+  sameTagNameSet,
   softDeletePrayerRequest,
   updatePrayerRequest,
 } from "@/lib/db";
 import { formatPrayerDate, prayerStatusLabel } from "@/lib/prayer-display";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error" | "not-found";
@@ -33,16 +38,29 @@ export default function PrayerRequestDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [request, setRequest] = useState<PrayerRequest | null>(null);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [mode, setMode] = useState<Mode>("view");
 
   const [titleDraft, setTitleDraft] = useState("");
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [followUpDraft, setFollowUpDraft] = useState<string | null>(null);
+  const [tagsDraft, setTagsDraft] = useState<string[]>([]);
   const [answerDraft, setAnswerDraft] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const hasUnsavedEdits =
+    !saving &&
+    request != null &&
+    ((mode === "editing" &&
+      (titleDraft !== request.title ||
+        descriptionDraft !== (request.description ?? "") ||
+        followUpDraft !== (request.followUpAt ?? null) ||
+        !sameTagNameSet(tagsDraft, tags.map((tag) => tag.name)))) ||
+      (mode === "answering" && answerDraft.trim().length > 0));
+  useUnsavedChangesGuard(hasUnsavedEdits);
 
   useFocusEffect(
     useCallback(() => {
@@ -64,6 +82,7 @@ export default function PrayerRequestDetailScreen() {
             return;
           }
           setRequest(result);
+          setTags(await listTagsForEntry("prayer_request", id));
           setLoadState("ready");
         } catch (error: unknown) {
           if (active) {
@@ -89,6 +108,7 @@ export default function PrayerRequestDetailScreen() {
     setTitleDraft(request.title);
     setDescriptionDraft(request.description ?? "");
     setFollowUpDraft(request.followUpAt ?? null);
+    setTagsDraft(tags.map((tag) => tag.name));
     setMode("editing");
   }
 
@@ -115,10 +135,12 @@ export default function PrayerRequestDetailScreen() {
         description:
           descriptionDraft.trim().length > 0 ? descriptionDraft.trim() : null,
         followUpAt: followUpDraft,
+        tags: tagsDraft,
       });
       if (updated) {
         setRequest(updated);
       }
+      setTags(await listTagsForEntry("prayer_request", request.id));
       setMode("view");
     } catch (error: unknown) {
       console.warn(
@@ -356,6 +378,14 @@ export default function PrayerRequestDetailScreen() {
             </View>
           </View>
 
+          <View style={styles.field}>
+            <TagEditor
+              value={tagsDraft}
+              onChange={setTagsDraft}
+              placeholder="e.g. Family, Provision, Guidance"
+            />
+          </View>
+
           <DateSelector
             label="Follow-up date (optional)"
             value={followUpDraft}
@@ -463,6 +493,17 @@ export default function PrayerRequestDetailScreen() {
         </View>
       ) : null}
 
+      {tags.length > 0 ? (
+        <View style={styles.tagsBlock}>
+          <TagChips
+            tags={tags}
+            onPressTag={(tag) =>
+              router.push({ pathname: "/tags/[id]", params: { id: tag.id } })
+            }
+          />
+        </View>
+      ) : null}
+
       {request.sourceJournalEntryId ? (
         <SourceReflectionLink journalEntryId={request.sourceJournalEntryId} />
       ) : null}
@@ -542,6 +583,9 @@ const styles = StyleSheet.create({
   body: {
     ...typography.body,
     color: colors.text,
+  },
+  tagsBlock: {
+    marginBottom: spacing.md,
   },
   privacyLine: {
     ...typography.bodySmall,

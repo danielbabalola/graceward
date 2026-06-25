@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeReflectionRequestSchema,
   analyzeReflectionResponseSchema,
+  gratitudeSuggestionSchema,
   lessonSuggestionSchema,
   prayerSuggestionSchema,
   MAX_REFLECTION_CHARS,
@@ -160,6 +161,43 @@ describe("lessonSuggestionSchema", () => {
     ).toBe(false);
     expect(
       lessonSuggestionSchema.safeParse({ title: "x", content: "" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("suggestion tags", () => {
+  it("accepts an optional tags array on each suggestion kind", () => {
+    expect(
+      gratitudeSuggestionSchema.safeParse({
+        content: "A quiet morning",
+        tags: ["Provision", "Rest"],
+      }).success,
+    ).toBe(true);
+    expect(
+      lessonSuggestionSchema.safeParse({
+        title: "Patience",
+        content: "Growing in waiting.",
+        tags: ["Trust"],
+      }).success,
+    ).toBe(true);
+    expect(
+      prayerSuggestionSchema.safeParse({ title: "Rest", tags: ["Health"] })
+        .success,
+    ).toBe(true);
+  });
+
+  it("accepts an empty tags array and omitted tags", () => {
+    expect(
+      gratitudeSuggestionSchema.safeParse({ content: "x", tags: [] }).success,
+    ).toBe(true);
+    expect(gratitudeSuggestionSchema.safeParse({ content: "x" }).success).toBe(
+      true,
+    );
+  });
+
+  it("rejects blank tag strings", () => {
+    expect(
+      gratitudeSuggestionSchema.safeParse({ content: "x", tags: [""] }).success,
     ).toBe(false);
   });
 });

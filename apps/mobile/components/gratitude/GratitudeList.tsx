@@ -1,10 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
-import type { Gratitude } from "@graceward/shared";
+import type { Gratitude, Tag } from "@graceward/shared";
 import { Card } from "@/components/ui/Card";
 import { ItemCard } from "@/components/gratitude/ItemCard";
-import { listGratitudes } from "@/lib/db";
+import { TagFilterBar } from "@/components/tags/TagFilterBar";
+import { collectDistinctTags } from "@/lib/tag-display";
+import { listGratitudes, listTagsForEntries } from "@/lib/db";
 import { contentPreview, gratitudeMetaLine } from "@/lib/gratitude-display";
 import { colors, spacing } from "@/theme/tokens";
 
@@ -12,6 +14,8 @@ type LoadState = "loading" | "ready" | "error";
 
 export function GratitudeList() {
   const [items, setItems] = useState<Gratitude[]>([]);
+  const [tagMap, setTagMap] = useState<Map<string, Tag[]>>(new Map());
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
 
   useFocusEffect(
@@ -19,9 +23,14 @@ export function GratitudeList() {
       let active = true;
       setLoadState((prev) => (prev === "ready" ? prev : "loading"));
       listGratitudes()
-        .then((rows) => {
+        .then(async (rows) => {
+          const map = await listTagsForEntries(
+            "gratitude",
+            rows.map((row) => row.id),
+          );
           if (active) {
             setItems(rows);
+            setTagMap(map);
             setLoadState("ready");
           }
         })
@@ -39,6 +48,16 @@ export function GratitudeList() {
       };
     }, []),
   );
+
+  const filterTags = useMemo(() => collectDistinctTags(tagMap), [tagMap]);
+  const visibleItems = useMemo(() => {
+    if (!selectedTagId) {
+      return items;
+    }
+    return items.filter((item) =>
+      (tagMap.get(item.id) ?? []).some((tag) => tag.id === selectedTagId),
+    );
+  }, [items, tagMap, selectedTagId]);
 
   if (loadState === "loading") {
     return (
@@ -70,11 +89,17 @@ export function GratitudeList() {
 
   return (
     <View style={styles.list}>
-      {items.map((item) => (
+      <TagFilterBar
+        tags={filterTags}
+        selectedId={selectedTagId}
+        onSelect={setSelectedTagId}
+      />
+      {visibleItems.map((item) => (
         <ItemCard
           key={item.id}
           meta={gratitudeMetaLine(item)}
           content={contentPreview(item.content)}
+          tags={tagMap.get(item.id)}
           accessibilityLabel={`Open gratitude: ${contentPreview(item.content)}`}
           onPress={() =>
             router.push({

@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -29,6 +29,11 @@ type VoiceRecorderProps = {
   /** Copy shown in the idle state before recording begins. */
   idleBody?: string;
   /**
+   * Reports whether there is in-progress or recorded-but-unsaved audio, so a
+   * parent screen can warn before discarding it. Pass a stable setter.
+   */
+  onDirtyChange?: (dirty: boolean) => void;
+  /**
    * Optional content rendered above the recorder before recording starts and
    * again in the preview state (e.g. a reflection date selector). It is hidden
    * while recording so it never interrupts the audio session.
@@ -47,6 +52,7 @@ const DEFAULT_IDLE_BODY =
 export function VoiceRecorder({
   onSave,
   idleBody,
+  onDirtyChange,
   header,
 }: VoiceRecorderProps) {
   const recorder = useVoiceRecorder();
@@ -54,6 +60,10 @@ export function VoiceRecorder({
     recorder;
 
   const [savingError, setSavingError] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(status === "recording" || status === "preview");
+  }, [status, onDirtyChange]);
 
   async function handleSave() {
     if (!previewUri || status === "saving") {

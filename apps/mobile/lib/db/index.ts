@@ -10,6 +10,8 @@ export {
   updateJournalEntry,
   saveVoiceTranscript,
   softDeleteJournalEntry,
+  getJournalEntryTagNames,
+  setJournalEntryTags,
 } from "./journal";
 export type { UpdateJournalEntryInput } from "./journal";
 export {
@@ -37,6 +39,7 @@ export {
   gratitudeSuggestionFingerprint,
   faithfulnessSuggestionFingerprint,
   lessonSuggestionFingerprint,
+  instructionSuggestionFingerprint,
 } from "./ai-saved-suggestions";
 export type {
   SuggestionKind,
@@ -57,6 +60,7 @@ export {
   archivePrayerRequest,
   reactivatePrayerRequest,
   softDeletePrayerRequest,
+  getPrayerRequestTagNames,
 } from "./prayer";
 export {
   createGratitude,
@@ -67,6 +71,7 @@ export {
   getGratitudeById,
   updateGratitude,
   softDeleteGratitude,
+  getGratitudeTagNames,
 } from "./gratitude";
 export {
   createWin,
@@ -77,6 +82,7 @@ export {
   getWinById,
   updateWin,
   softDeleteWin,
+  getWinTagNames,
 } from "./wins";
 export {
   createLesson,
@@ -89,7 +95,21 @@ export {
   archiveLesson,
   reactivateLesson,
   softDeleteLesson,
+  getLessonTagNames,
 } from "./lessons";
+export {
+  createInstruction,
+  listInstructions,
+  listRecentInstructions,
+  listInstructionsByStatus,
+  getInstructionFocus,
+  getInstructionById,
+  updateInstruction,
+  fulfillInstruction,
+  reopenInstruction,
+  softDeleteInstruction,
+  getInstructionTagNames,
+} from "./instructions";
 export {
   hasAcknowledgedAiReflectionConsent,
   acknowledgeAiReflectionConsent,
@@ -102,4 +122,22 @@ export {
   resetVoiceEntryConsent,
   getOrCreateAiInstallId,
 } from "./preferences";
+export {
+  normalizeTagSlug,
+  normalizeTagName,
+  dedupeTagNames,
+  sameTagNameSet,
+  listAllTags,
+  listTagsWithCounts,
+  getTagById,
+  upsertTagByName,
+  listTagsForEntry,
+  listTagsForEntries,
+  listEntryRefsForTag,
+  listEntryIdsForTagByType,
+  listEntryTagsForExport,
+  setEntryTags,
+  clearEntryTags,
+} from "./tags";
+export type { EntryTagLinkExport } from "./tags";
 export { deriveTitle, isFutureLocalDate, toLocalDateString } from "./helpers";

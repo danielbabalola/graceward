@@ -1,8 +1,15 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import type {
   Gratitude,
+  Instruction,
   JournalEntry,
   Lesson,
   PrayerRequest,
@@ -14,6 +21,7 @@ import { ItemCard } from "@/components/gratitude/ItemCard";
 import { Screen } from "@/components/ui/Screen";
 import { Section } from "@/components/ui/Section";
 import {
+  getInstructionFocus,
   getMostRecentAnsweredPrayer,
   getMostRecentGratitude,
   getMostRecentJournalEntry,
@@ -32,7 +40,16 @@ import {
   winMetaLine,
 } from "@/lib/gratitude-display";
 import { lessonMetaLine } from "@/lib/lesson-display";
-import { colors, spacing } from "@/theme/tokens";
+import { instructionMetaLine } from "@/lib/instruction-display";
+import { APP_TAGLINE } from "@/lib/diagnostics";
+import {
+  colors,
+  radii,
+  shadows,
+  spacing,
+  touchTarget,
+  typography,
+} from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -43,6 +60,7 @@ type TodayData = {
   answeredPrayer: PrayerRequest | null;
   recentWin: Win | null;
   recentLesson: Lesson | null;
+  recentInstruction: Instruction | null;
 };
 
 const EMPTY_DATA: TodayData = {
@@ -52,6 +70,7 @@ const EMPTY_DATA: TodayData = {
   answeredPrayer: null,
   recentWin: null,
   recentLesson: null,
+  recentInstruction: null,
 };
 
 type FaithfulnessReminder =
@@ -98,6 +117,7 @@ export default function TodayScreen() {
         getMostRecentAnsweredPrayer(),
         getMostRecentWin(),
         getMostRecentLesson(),
+        getInstructionFocus(),
       ])
         .then(
           ([
@@ -107,6 +127,7 @@ export default function TodayScreen() {
             answeredPrayer,
             recentWin,
             recentLesson,
+            recentInstruction,
           ]) => {
             if (active) {
               setData({
@@ -116,6 +137,7 @@ export default function TodayScreen() {
                 answeredPrayer,
                 recentWin,
                 recentLesson,
+                recentInstruction,
               });
               setLoadState("ready");
             }
@@ -143,16 +165,8 @@ export default function TodayScreen() {
   );
 
   return (
-    <Screen title="Today" subtitle="Pause. Reflect. Remember God's faithfulness.">
-      <Section title="Reflection">
-        <Card
-          variant="primary"
-          eyebrow="Start here"
-          title="New Reflection"
-          description="Speak or type honestly about your day. One tap away when you're ready."
-          onPress={() => router.push("/reflection")}
-        />
-      </Section>
+    <Screen title="Today">
+      <TodayHero />
 
       {loadState === "loading" ? (
         <View style={styles.centered}>
@@ -240,7 +254,7 @@ export default function TodayScreen() {
             )}
           </Section>
 
-          <Section title="Faithfulness">
+          <Section title="Testimonies">
             {reminder ? (
               <FaithfulnessReminderCard reminder={reminder} />
             ) : (
@@ -248,10 +262,10 @@ export default function TodayScreen() {
                 <Card
                   variant="subtle"
                   title="Remembering God's faithfulness"
-                  description="Answered prayers and moments of God's goodness will appear here over time."
+                  description="Answered prayers and major moments of God's faithfulness will appear here over time."
                 />
                 <Button
-                  label="Add faithfulness moment"
+                  label="Add testimony"
                   variant="secondary"
                   onPress={() => router.push("/win/new")}
                 />
@@ -275,6 +289,23 @@ export default function TodayScreen() {
               />
             </Section>
           ) : null}
+
+          {data.recentInstruction ? (
+            <Section title="What I'm Being Asked">
+              <ItemCard
+                meta={instructionMetaLine(data.recentInstruction)}
+                content={data.recentInstruction.title}
+                accentColor={colors.primaryDeep}
+                accessibilityLabel={`Open instruction: ${data.recentInstruction.title}`}
+                onPress={() =>
+                  router.push({
+                    pathname: "/instruction/[id]",
+                    params: { id: data.recentInstruction!.id },
+                  })
+                }
+              />
+            </Section>
+          ) : null}
         </>
       ) : null}
 
@@ -287,6 +318,55 @@ export default function TodayScreen() {
         />
       </Section>
     </Screen>
+  );
+}
+
+/**
+ * A small set of calm, open-ended prompts. One is chosen per calendar day so
+ * the hero feels alive without changing on every focus. Phrased as gentle
+ * invitations, never as commands or as the app speaking for God.
+ */
+const DAILY_PROMPTS = [
+  "What is one honest thing about today?",
+  "Where did you notice God today?",
+  "What do you need to bring before Him?",
+  "Name one mercy from today, however small.",
+  "What is sitting on your heart right now?",
+  "What are you hoping for tonight?",
+] as const;
+
+/** Picks a stable prompt for the current local day. */
+function dailyPrompt(now: Date = new Date()): string {
+  const dayIndex = Math.floor(now.getTime() / 86_400_000);
+  return DAILY_PROMPTS[
+    ((dayIndex % DAILY_PROMPTS.length) + DAILY_PROMPTS.length) %
+      DAILY_PROMPTS.length
+  ]!;
+}
+
+/**
+ * The Today home hero: a calm, dawn/sanctuary-inspired arch that anchors the
+ * screen as the main place to pause, with the app tagline, a gentle daily
+ * prompt, and the primary "Begin Reflection" action.
+ */
+function TodayHero() {
+  return (
+    <View style={styles.hero}>
+      <View style={styles.heroSun} />
+      <View style={styles.heroArch}>
+        <Text style={styles.heroEyebrow}>A moment with God</Text>
+        <Text style={styles.heroTagline}>{APP_TAGLINE}</Text>
+        <Text style={styles.heroPrompt}>{dailyPrompt()}</Text>
+        <Pressable
+          onPress={() => router.push("/reflection")}
+          accessibilityRole="button"
+          accessibilityLabel="Begin a new reflection"
+          style={({ pressed }) => [styles.heroCta, pressed && styles.heroCtaPressed]}
+        >
+          <Text style={styles.heroCtaLabel}>Begin Reflection</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -337,10 +417,10 @@ function FaithfulnessReminderCard({
   const { win } = reminder;
   return (
     <ItemCard
-      meta={`Faithfulness moment · ${winMetaLine(win)}`}
+      meta={`Testimony · ${winMetaLine(win)}`}
       content={contentPreview(win.content)}
       accentColor={colors.accentGold}
-      accessibilityLabel={`Open faithfulness moment: ${contentPreview(
+      accessibilityLabel={`Open testimony: ${contentPreview(
         win.content,
       )}`}
       onPress={() =>
@@ -357,5 +437,72 @@ const styles = StyleSheet.create({
   },
   emptyBlock: {
     gap: spacing.sm,
+  },
+  hero: {
+    alignItems: "center",
+    backgroundColor: colors.primaryLight,
+    borderRadius: radii.lg,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+    overflow: "hidden",
+    ...shadows.card,
+  },
+  // Soft dawn "sun" rising behind the arch.
+  heroSun: {
+    position: "absolute",
+    top: -56,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: colors.accentGold,
+    opacity: 0.18,
+  },
+  // The sanctuary arch: a rounded-top panel holding the focal content.
+  heroArch: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    backgroundColor: colors.cardBackground,
+    borderTopLeftRadius: 140,
+    borderTopRightRadius: 140,
+    borderBottomLeftRadius: radii.lg,
+    borderBottomRightRadius: radii.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  heroEyebrow: {
+    ...typography.caption,
+    color: colors.textSubtle,
+    textTransform: "uppercase",
+  },
+  heroTagline: {
+    ...typography.sectionTitle,
+    color: colors.primaryDeep,
+    textAlign: "center",
+  },
+  heroPrompt: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: "center",
+    marginBottom: spacing.sm,
+  },
+  heroCta: {
+    backgroundColor: colors.primaryDeep,
+    borderRadius: radii.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    minHeight: touchTarget,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  heroCtaPressed: {
+    opacity: 0.9,
+  },
+  heroCtaLabel: {
+    ...typography.cardTitle,
+    color: colors.white,
   },
 });

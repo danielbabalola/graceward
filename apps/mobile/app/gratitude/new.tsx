@@ -14,8 +14,10 @@ import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
+import { TagEditor } from "@/components/tags/TagEditor";
 import { createGratitude, toLocalDateString } from "@/lib/db";
-import { hasTypedEntryContent } from "@/lib/voice-entry-fields";
+import { hasTypedEntryContent, suggestionTags } from "@/lib/voice-entry-fields";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function NewGratitudeScreen() {
@@ -23,17 +25,20 @@ export default function NewGratitudeScreen() {
     sourceJournalEntryId?: string;
   }>();
   const [content, setContent] = useState("");
-  const [category, setCategory] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const canSave = content.trim().length > 0 && !saving;
+  const { allowNextNavigation } = useUnsavedChangesGuard(
+    !saving && (hasTypedEntryContent([content]) || tags.length > 0),
+  );
 
   function handleStructured(result: StructureVoiceEntryResponse) {
     if (result.entryType !== "gratitude") {
       return;
     }
     setContent(result.fields.content);
-    setCategory(result.fields.category ?? "");
+    setTags(suggestionTags(result.fields));
   }
 
   async function handleSave() {
@@ -44,10 +49,11 @@ export default function NewGratitudeScreen() {
     try {
       await createGratitude({
         content: content.trim(),
-        category: category.trim().length > 0 ? category.trim() : null,
+        tags,
         journalEntryId: sourceJournalEntryId ?? null,
         syncStatus: "local_only",
       });
+      allowNextNavigation();
       router.replace({
         pathname: "/(tabs)/gratitude",
         params: { segment: "gratitude" },
@@ -85,7 +91,7 @@ export default function NewGratitudeScreen() {
           entryType="gratitude"
           entryDate={toLocalDateString(new Date())}
           onStructured={handleStructured}
-          hasExistingInput={hasTypedEntryContent([content, category])}
+          hasExistingInput={hasTypedEntryContent([content]) || tags.length > 0}
         />
 
         <View style={styles.field}>
@@ -106,17 +112,11 @@ export default function NewGratitudeScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Category (optional)</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              value={category}
-              onChangeText={setCategory}
-              placeholder="e.g. Family, Provision, Health"
-              placeholderTextColor={colors.textSubtle}
-              style={styles.singleLineInput}
-              accessibilityLabel="Gratitude category"
-            />
-          </View>
+          <TagEditor
+            value={tags}
+            onChange={setTags}
+            placeholder="e.g. Family, Provision, Health"
+          />
         </View>
 
         <Text style={styles.hint}>Saved privately on this device only.</Text>
@@ -151,10 +151,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     minHeight: 120,
-  },
-  singleLineInput: {
-    ...typography.body,
-    color: colors.text,
   },
   hint: {
     ...typography.bodySmall,

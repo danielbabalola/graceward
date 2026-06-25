@@ -98,6 +98,8 @@ const MESSAGES: Record<string, string> = {
     "Graceward's AI service is unavailable right now. Please try again.",
   AI_INVALID_RESPONSE:
     "Graceward couldn't make sense of the reflection just now. Please try again.",
+  CONTENT_FLAGGED:
+    "Graceward's companion can't respond to this entry. You can still keep it privately in your journal.",
   INVALID_REQUEST: "This reflection can't be analyzed.",
   ...AI_ACCESS_MESSAGES,
 };

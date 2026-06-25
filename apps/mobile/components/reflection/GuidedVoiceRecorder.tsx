@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +27,11 @@ type GuidedVoiceRecorderProps = {
   idleBody?: string;
   onSave: (recording: GuidedVoiceRecording) => Promise<void>;
   /**
+   * Reports whether there is in-progress or recorded-but-unsaved audio, so a
+   * parent screen can warn before discarding it. Pass a stable setter.
+   */
+  onDirtyChange?: (dirty: boolean) => void;
+  /**
    * Optional content rendered above the recorder before recording starts and
    * again in the preview state (e.g. a reflection date selector). It is hidden
    * while recording so it never interrupts the continuous audio file.
@@ -43,6 +48,7 @@ export function GuidedVoiceRecorder({
   config,
   idleBody,
   onSave,
+  onDirtyChange,
   header,
 }: GuidedVoiceRecorderProps) {
   const recorder = useVoiceRecorder();
@@ -55,6 +61,10 @@ export function GuidedVoiceRecorder({
   const [index, setIndex] = useState(0);
   const [markers, setMarkers] = useState<GuidedPromptMarker[]>([]);
   const [savingError, setSavingError] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(status === "recording" || status === "preview");
+  }, [status, onDirtyChange]);
 
   const prompt = prompts[index];
   const isLast = index === total - 1;

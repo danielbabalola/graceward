@@ -14,6 +14,24 @@ export function hasTypedEntryContent(
   return values.some((value) => (value ?? "").trim().length > 0);
 }
 
+/**
+ * Extracts the suggested tag names from a structured AI suggestion's fields.
+ * Prefers the unified `tags` array, falling back to the deprecated single
+ * category/theme/faithfulnessTheme field so older provider responses still map.
+ */
+export function suggestionTags(fields: {
+  tags?: string[];
+  category?: string | null;
+  theme?: string | null;
+  faithfulnessTheme?: string | null;
+}): string[] {
+  if (Array.isArray(fields.tags) && fields.tags.length > 0) {
+    return fields.tags;
+  }
+  const legacy = fields.category ?? fields.theme ?? fields.faithfulnessTheme;
+  return legacy ? [legacy] : [];
+}
+
 /** True when `dateString` is a real calendar date (rejects e.g. 2026-02-31). */
 function isRealCalendarDate(dateString: string): boolean {
   const [year, month, day] = dateString.split("-").map(Number);

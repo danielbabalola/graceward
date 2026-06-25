@@ -9,6 +9,11 @@ import {
 import { createOpenAiTranscriptionProvider } from "../ai/openai-transcription-provider.js";
 import { createOpenAiStructuringProvider } from "../ai/openai-structure-entry-provider.js";
 import { AiError } from "../ai/types.js";
+import {
+  contentFlaggedError,
+  createModerationGuard,
+  entryFieldsText,
+} from "../ai/moderation.js";
 import type { TranscriptionProvider } from "../ai/transcription-types.js";
 import type { EntryStructuringProvider } from "../ai/structure-entry-types.js";
 import {
@@ -199,6 +204,8 @@ export function registerStructureVoiceEntryRoute(
         return;
       }
 
+      const moderation = createModerationGuard();
+
       let transcriptionProvider: TranscriptionProvider;
       let structuringProvider: EntryStructuringProvider;
       try {
@@ -225,11 +232,53 @@ export function registerStructureVoiceEntryRoute(
           .trim()
           .slice(0, MAX_VOICE_ENTRY_TRANSCRIPT_CHARS);
 
+        // Input moderation on the transcript, before the structuring call.
+        // Fails open on a moderation outage (see analyze route for rationale);
+        // a genuine block returns a calm CONTENT_FLAGGED via the catch below.
+        if (moderation) {
+          const outcome = await moderation.check(transcript);
+          if (outcome.status === "blocked") {
+            request.log.warn(
+              {
+                requestId: request.id,
+                code: "CONTENT_FLAGGED",
+                stage: "input",
+                categories: outcome.categories,
+              },
+              "voice entry transcript flagged by moderation",
+            );
+            throw contentFlaggedError();
+          }
+          if (outcome.status === "unavailable") {
+            request.log.warn(
+              { requestId: request.id, code: "MODERATION_UNAVAILABLE", stage: "input" },
+              "input moderation unavailable; proceeding",
+            );
+          }
+        }
+
         const fields = await structuringProvider.structure({
           entryType: metadata.data.entryType,
           transcript,
           entryDate: metadata.data.entryDate,
         });
+
+        // Output moderation on the structured fields.
+        if (moderation) {
+          const outcome = await moderation.check(entryFieldsText(fields));
+          if (outcome.status === "blocked") {
+            request.log.warn(
+              {
+                requestId: request.id,
+                code: "CONTENT_FLAGGED",
+                stage: "output",
+                categories: outcome.categories,
+              },
+              "voice entry output flagged by moderation",
+            );
+            throw contentFlaggedError();
+          }
+        }
 
         const candidate = {
           entryType: metadata.data.entryType,

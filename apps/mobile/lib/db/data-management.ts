@@ -1,9 +1,11 @@
 import type {
   AudioAsset,
   Gratitude,
+  Instruction,
   JournalEntry,
   Lesson,
   PrayerRequest,
+  Tag,
   Win,
 } from "@graceward/shared";
 import { deleteAllLocalAudio } from "@/lib/audio-storage";
@@ -14,6 +16,12 @@ import { listPrayerRequests } from "./prayer";
 import { listGratitudes } from "./gratitude";
 import { listWins } from "./wins";
 import { listLessons } from "./lessons";
+import { listInstructions } from "./instructions";
+import {
+  listAllTags,
+  listEntryTagsForExport,
+  type EntryTagLinkExport,
+} from "./tags";
 import {
   listSavedSuggestionsForExport,
   type SavedSuggestionExport,
@@ -34,17 +42,23 @@ export type LocalDataExport = {
     gratitudes: number;
     faithfulnessMoments: number;
     lessons: number;
+    instructions: number;
     audioAssets: number;
     savedAiSuggestions: number;
+    tags: number;
   };
   journalEntries: JournalEntry[];
   prayerRequests: PrayerRequest[];
   gratitudes: Gratitude[];
   faithfulnessMoments: Win[];
   lessons: Lesson[];
+  instructions: Instruction[];
   audioAssets: AudioAsset[];
   // Metadata only (kind + references + timestamps). No raw suggestion text.
   savedAiSuggestions: SavedSuggestionExport[];
+  // The shared tag vocabulary and the links that apply tags to entries.
+  tags: Tag[];
+  entryTags: EntryTagLinkExport[];
 };
 
 /**
@@ -63,16 +77,22 @@ export async function listAllForExport(): Promise<LocalDataExport> {
     gratitudes,
     faithfulnessMoments,
     lessons,
+    instructions,
     audioAssets,
     savedAiSuggestions,
+    tags,
+    entryTags,
   ] = await Promise.all([
     listJournalEntries(),
     listPrayerRequests(),
     listGratitudes(),
     listWins(),
     listLessons(),
+    listInstructions(),
     listAudioAssetsForExport(),
     listSavedSuggestionsForExport(),
+    listAllTags(),
+    listEntryTagsForExport(),
   ]);
 
   return {
@@ -85,16 +105,21 @@ export async function listAllForExport(): Promise<LocalDataExport> {
       gratitudes: gratitudes.length,
       faithfulnessMoments: faithfulnessMoments.length,
       lessons: lessons.length,
+      instructions: instructions.length,
       audioAssets: audioAssets.length,
       savedAiSuggestions: savedAiSuggestions.length,
+      tags: tags.length,
     },
     journalEntries,
     prayerRequests,
     gratitudes,
     faithfulnessMoments,
     lessons,
+    instructions,
     audioAssets,
     savedAiSuggestions,
+    tags,
+    entryTags,
   };
 }
 
@@ -120,8 +145,11 @@ export async function deleteAllLocalData(): Promise<void> {
        DELETE FROM gratitudes;
        DELETE FROM wins;
        DELETE FROM lessons;
+       DELETE FROM instructions;
        DELETE FROM ai_reflection_results;
        DELETE FROM ai_saved_suggestions;
+       DELETE FROM entry_tags;
+       DELETE FROM tags;
        DELETE FROM app_preferences;`,
     );
   });

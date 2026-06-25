@@ -6,6 +6,7 @@ import type {
 import { getDatabase } from "./client";
 import { deriveTitle, isFutureLocalDate, toLocalDateString } from "./helpers";
 import { softDeleteAudioAssetsForEntry } from "./audio";
+import { listTagsForEntry, setEntryTags } from "./tags";
 
 type JournalEntryRow = {
   id: string;
@@ -99,7 +100,25 @@ export async function createJournalEntry(
     ],
   );
 
+  if (input.tags && input.tags.length > 0) {
+    await setEntryTags("journal_entry", entry.id, input.tags);
+  }
+
   return entry;
+}
+
+/** Tag names currently applied to a journal reflection. */
+export async function getJournalEntryTagNames(id: string): Promise<string[]> {
+  const tags = await listTagsForEntry("journal_entry", id);
+  return tags.map((tag) => tag.name);
+}
+
+/** Replaces the full set of tags on a journal reflection. */
+export async function setJournalEntryTags(
+  id: string,
+  names: string[],
+): Promise<void> {
+  await setEntryTags("journal_entry", id, names);
 }
 
 export async function listJournalEntries(): Promise<JournalEntry[]> {

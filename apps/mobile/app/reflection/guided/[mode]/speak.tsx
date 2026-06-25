@@ -9,6 +9,7 @@ import { ReflectionDateSelector } from "@/components/reflection/ReflectionDateSe
 import { createAudioAsset, createJournalEntry } from "@/lib/db";
 import { persistRecording } from "@/lib/audio-storage";
 import { resolveInitialEntryDate } from "@/lib/reflection-date";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { buildGuidedVoicePayload } from "@/lib/guided-payload";
 import {
   guidedModeConfigs,
@@ -33,6 +34,12 @@ export default function GuidedSpeakScreen() {
   const [entryDate, setEntryDate] = useState(() =>
     resolveInitialEntryDate(entryDateParam),
   );
+  const [dirty, setDirty] = useState(false);
+  const { allowNextNavigation } = useUnsavedChangesGuard(dirty, {
+    title: "Discard recording?",
+    message:
+      "You have a recording that hasn't been saved. If you leave now, it'll be lost.",
+  });
 
   if (!mode || !isGuidedMode(mode)) {
     return <Redirect href="/reflection/guided/mode" />;
@@ -72,6 +79,7 @@ export default function GuidedSpeakScreen() {
       syncStatus: "local_only",
     });
 
+    allowNextNavigation();
     router.replace("/(tabs)/journal");
   }
 
@@ -81,6 +89,7 @@ export default function GuidedSpeakScreen() {
         config={config}
         idleBody={speakIntros[config.mode]}
         onSave={handleSave}
+        onDirtyChange={setDirty}
         header={
           <ReflectionDateSelector value={entryDate} onChange={setEntryDate} />
         }

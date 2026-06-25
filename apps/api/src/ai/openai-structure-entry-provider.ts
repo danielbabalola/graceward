@@ -1,4 +1,7 @@
-import { voiceEntryFieldSchemas } from "@graceward/ai-schemas";
+import {
+  MAX_TAGS_PER_ENTRY,
+  voiceEntryFieldSchemas,
+} from "@graceward/ai-schemas";
 import {
   buildStructureSystemPrompt,
   buildStructureUserPrompt,
@@ -143,7 +146,11 @@ export function createOpenAiStructuringProvider(): EntryStructuringProvider {
         );
       }
 
-      return result.data as VoiceEntryFields;
+      const data = result.data as VoiceEntryFields & { tags?: string[] };
+      if (Array.isArray(data.tags)) {
+        data.tags = data.tags.slice(0, MAX_TAGS_PER_ENTRY);
+      }
+      return data as VoiceEntryFields;
     },
   };
 }

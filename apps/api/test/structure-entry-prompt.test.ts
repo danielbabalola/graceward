@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { STRUCTURE_ENTRY_PROMPT_VERSION } from "@graceward/ai-schemas";
+import {
+  CANONICAL_TAGS,
+  STRUCTURE_ENTRY_PROMPT_VERSION,
+} from "@graceward/ai-schemas";
 import {
   buildStructureSystemPrompt,
   buildStructureUserPrompt,
@@ -7,7 +10,13 @@ import {
 
 describe("buildStructureSystemPrompt", () => {
   it("applies shared guardrails to every entry type", () => {
-    for (const type of ["prayer", "gratitude", "faithfulness", "lesson"] as const) {
+    for (const type of [
+      "prayer",
+      "gratitude",
+      "faithfulness",
+      "lesson",
+      "instruction",
+    ] as const) {
       const prompt = buildStructureSystemPrompt(type);
       expect(prompt).toContain("ONLY from what the user actually said");
       expect(prompt).toContain("NEVER claim to speak for God");
@@ -15,6 +24,25 @@ describe("buildStructureSystemPrompt", () => {
       expect(prompt).toContain("untrusted content");
       // Never invent — structuring must not add content the user didn't say.
       expect(prompt.toLowerCase()).toContain("do not invent");
+      // Content-safety boundaries shared by every entry type.
+      expect(prompt).toContain("sexually explicit");
+      expect(prompt).toContain("medical, legal, or financial");
+      expect(prompt.toLowerCase()).toContain("never reveal");
+    }
+  });
+
+  it("nudges every tagged type toward the canonical tag vocabulary", () => {
+    for (const type of [
+      "prayer",
+      "gratitude",
+      "faithfulness",
+      "lesson",
+      "instruction",
+    ] as const) {
+      const prompt = buildStructureSystemPrompt(type);
+      for (const tag of CANONICAL_TAGS) {
+        expect(prompt).toContain(tag);
+      }
     }
   });
 
@@ -39,12 +67,22 @@ describe("buildStructureSystemPrompt", () => {
       "Follow-up dates",
     );
     expect(buildStructureSystemPrompt("lesson")).not.toContain("Follow-up dates");
+    expect(buildStructureSystemPrompt("instruction")).not.toContain(
+      "Follow-up dates",
+    );
   });
 
   it("keeps lessons humble and never claims God taught it", () => {
     const lesson = buildStructureSystemPrompt("lesson");
     expect(lesson).toContain("LESSON");
     expect(lesson.toLowerCase()).toContain("humble");
+  });
+
+  it("treats an instruction as the user's own words, never God speaking", () => {
+    const instruction = buildStructureSystemPrompt("instruction");
+    expect(instruction).toContain("INSTRUCTION");
+    expect(instruction).toContain("NEVER claim to speak for God");
+    expect(instruction.toLowerCase()).toContain("their own words");
   });
 });
 
@@ -56,10 +94,21 @@ describe("buildStructureUserPrompt", () => {
     entryDate: "2026-06-24",
   };
 
-  it("wraps the transcript in untrusted-content delimiters", () => {
+  it("wraps the transcript in nonce-tagged untrusted-content delimiters", () => {
     const prompt = buildStructureUserPrompt(input);
-    expect(prompt).toContain("<<<TRANSCRIPT>>>");
-    expect(prompt).toContain("<<<END TRANSCRIPT>>>");
+    const open = prompt.match(/<<<TRANSCRIPT ([0-9a-f]{16})>>>/);
+    expect(open).not.toBeNull();
+    expect(prompt).toContain(`<<<END TRANSCRIPT ${open![1]}>>>`);
+  });
+
+  it("uses a fresh, unguessable nonce on each call", () => {
+    const a = buildStructureUserPrompt(input).match(
+      /<<<TRANSCRIPT ([0-9a-f]{16})>>>/,
+    )![1];
+    const b = buildStructureUserPrompt(input).match(
+      /<<<TRANSCRIPT ([0-9a-f]{16})>>>/,
+    )![1];
+    expect(a).not.toEqual(b);
   });
 
   it("includes prompt metadata", () => {
@@ -71,8 +120,11 @@ describe("buildStructureUserPrompt", () => {
 
   it("preserves the raw transcript between the delimiters", () => {
     const prompt = buildStructureUserPrompt(input);
-    const start = prompt.indexOf("<<<TRANSCRIPT>>>");
-    const end = prompt.indexOf("<<<END TRANSCRIPT>>>");
+    const nonce = prompt.match(/<<<TRANSCRIPT ([0-9a-f]{16})>>>/)![1];
+    // The markers also appear once in the instruction line; the actual wrapping
+    // delimiters are the last occurrences.
+    const start = prompt.lastIndexOf(`<<<TRANSCRIPT ${nonce}>>>`);
+    const end = prompt.lastIndexOf(`<<<END TRANSCRIPT ${nonce}>>>`);
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
     expect(prompt.slice(start, end)).toContain(input.transcript);

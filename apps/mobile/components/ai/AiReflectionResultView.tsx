@@ -5,11 +5,13 @@ import { Section } from "@/components/ui/Section";
 import { SuggestionCard, type SaveStatus } from "@/components/ai/SuggestionCard";
 import {
   createGratitude,
+  createInstruction,
   createLesson,
   createPrayerRequest,
   createWin,
   faithfulnessSuggestionFingerprint,
   gratitudeSuggestionFingerprint,
+  instructionSuggestionFingerprint,
   lessonSuggestionFingerprint,
   listSavedSuggestionFingerprints,
   markAiSuggestionSaved,
@@ -84,6 +86,11 @@ export function AiReflectionResultView({
         result.lessonSuggestions.forEach((s, i) => {
           if (saved.has(lessonSuggestionFingerprint(s))) {
             restored[`lesson-${i}`] = "saved";
+          }
+        });
+        result.instructionSuggestions.forEach((s, i) => {
+          if (saved.has(instructionSuggestionFingerprint(s))) {
+            restored[`instruction-${i}`] = "saved";
           }
         });
         setStatuses((prev) => ({ ...restored, ...prev }));
@@ -165,11 +172,12 @@ export function AiReflectionResultView({
                 key={key}
                 titleLabel="Prayer focus"
                 descriptionLabel="Details"
+                supportsTags
                 supportsFollowUp
                 initial={{
                   title: prayer.title,
                   description: prayer.description ?? "",
-                  tag: "",
+                  tags: prayer.tags ?? [],
                   followUpAt: prayer.followUpAt ?? null,
                 }}
                 status={statuses[key] ?? "idle"}
@@ -188,6 +196,7 @@ export function AiReflectionResultView({
                       createPrayerRequest({
                         title: draft.title,
                         description: draft.description || null,
+                        tags: draft.tags,
                         status: "active",
                         sourceJournalEntryId: journalEntryId,
                         followUpAt: draft.followUpAt,
@@ -210,11 +219,11 @@ export function AiReflectionResultView({
                 key={key}
                 titleLabel="Gratitude"
                 titleMultiline
-                tagLabel="Category"
+                supportsTags
                 initial={{
                   title: gratitude.content,
                   description: "",
-                  tag: gratitude.category ?? "",
+                  tags: gratitude.tags ?? [],
                   followUpAt: null,
                 }}
                 status={statuses[key] ?? "idle"}
@@ -232,7 +241,7 @@ export function AiReflectionResultView({
                     () =>
                       createGratitude({
                         content: draft.title,
-                        category: draft.tag || null,
+                        tags: draft.tags,
                         journalEntryId,
                         syncStatus: "local_only",
                       }),
@@ -245,24 +254,24 @@ export function AiReflectionResultView({
       ) : null}
 
       {result.faithfulnessMomentSuggestions.length > 0 ? (
-        <Section title="Suggested faithfulness moments">
+        <Section title="Suggested testimonies">
           {result.faithfulnessMomentSuggestions.map((moment, index) => {
             const key = `moment-${index}`;
             return (
               <SuggestionCard
                 key={key}
-                titleLabel="Faithfulness moment"
+                titleLabel="Testimony"
                 titleMultiline
-                tagLabel="Theme"
+                supportsTags
                 initial={{
                   title: moment.content,
                   description: "",
-                  tag: moment.faithfulnessTheme ?? "",
+                  tags: moment.tags ?? [],
                   followUpAt: null,
                 }}
                 status={statuses[key] ?? "idle"}
-                saveLabel="Save faithfulness moment"
-                savedLabel="Saved to Faithfulness"
+                saveLabel="Save testimony"
+                savedLabel="Saved to Testimonies"
                 onSave={(draft) =>
                   void runSave(
                     key,
@@ -275,7 +284,7 @@ export function AiReflectionResultView({
                     () =>
                       createWin({
                         content: draft.title,
-                        faithfulnessTheme: draft.tag || null,
+                        tags: draft.tags,
                         journalEntryId,
                         syncStatus: "local_only",
                       }),
@@ -296,11 +305,11 @@ export function AiReflectionResultView({
                 key={key}
                 titleLabel="Lesson to consider"
                 descriptionLabel="What you may be noticing"
-                tagLabel="Theme"
+                supportsTags
                 initial={{
                   title: lesson.title,
                   description: lesson.content,
-                  tag: lesson.theme ?? "",
+                  tags: lesson.tags ?? [],
                   followUpAt: null,
                 }}
                 status={statuses[key] ?? "idle"}
@@ -319,7 +328,57 @@ export function AiReflectionResultView({
                       createLesson({
                         title: draft.title,
                         content: draft.description || draft.title,
-                        theme: draft.tag || null,
+                        tags: draft.tags,
+                        sourceJournalEntryId: journalEntryId,
+                        status: "active",
+                        syncStatus: "local_only",
+                      }),
+                  )
+                }
+              />
+            );
+          })}
+        </Section>
+      ) : null}
+
+      {result.instructionSuggestions.length > 0 ? (
+        <Section title="Instructions to consider">
+          {result.instructionSuggestions.map((instruction, index) => {
+            const key = `instruction-${index}`;
+            return (
+              <SuggestionCard
+                key={key}
+                titleLabel="Instruction to consider"
+                descriptionLabel="What you sense you're being asked"
+                supportsTags
+                supportsFollowUp
+                followUpLabel="By when (optional)"
+                followUpSummaryLabel="By when"
+                followUpPlaceholder="Add a target date"
+                initial={{
+                  title: instruction.title,
+                  description: instruction.content,
+                  tags: instruction.tags ?? [],
+                  followUpAt: instruction.dueAt ?? null,
+                }}
+                status={statuses[key] ?? "idle"}
+                saveLabel="Save instruction"
+                savedLabel="Saved to Instructions"
+                onSave={(draft) =>
+                  void runSave(
+                    key,
+                    {
+                      kind: "instruction",
+                      index,
+                      fingerprint: instructionSuggestionFingerprint(instruction),
+                      createdItemType: "instruction",
+                    },
+                    () =>
+                      createInstruction({
+                        title: draft.title,
+                        content: draft.description || draft.title,
+                        dueAt: draft.followUpAt,
+                        tags: draft.tags,
                         sourceJournalEntryId: journalEntryId,
                         status: "active",
                         syncStatus: "local_only",

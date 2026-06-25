@@ -46,8 +46,9 @@ const DEFAULT_AUDIO_MIME = "audio/m4a";
 const NOUNS: Record<VoiceEntryType, string> = {
   prayer: "prayer request",
   gratitude: "gratitude",
-  faithfulness: "faithfulness moment",
+  faithfulness: "testimony",
   lesson: "lesson",
+  instruction: "instruction",
 };
 
 function privacyBody(entryType: VoiceEntryType): string {

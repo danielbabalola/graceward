@@ -14,8 +14,10 @@ import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
+import { TagEditor } from "@/components/tags/TagEditor";
 import { createLesson, toLocalDateString } from "@/lib/db";
-import { hasTypedEntryContent } from "@/lib/voice-entry-fields";
+import { hasTypedEntryContent, suggestionTags } from "@/lib/voice-entry-fields";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function NewLessonScreen() {
@@ -24,10 +26,13 @@ export default function NewLessonScreen() {
   }>();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [theme, setTheme] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const canSave = title.trim().length > 0 && content.trim().length > 0 && !saving;
+  const { allowNextNavigation } = useUnsavedChangesGuard(
+    !saving && (hasTypedEntryContent([title, content]) || tags.length > 0),
+  );
 
   function handleStructured(result: StructureVoiceEntryResponse) {
     if (result.entryType !== "lesson") {
@@ -35,7 +40,7 @@ export default function NewLessonScreen() {
     }
     setTitle(result.fields.title);
     setContent(result.fields.content);
-    setTheme(result.fields.theme ?? "");
+    setTags(suggestionTags(result.fields));
   }
 
   async function handleSave() {
@@ -47,11 +52,12 @@ export default function NewLessonScreen() {
       await createLesson({
         title: title.trim(),
         content: content.trim(),
-        theme: theme.trim().length > 0 ? theme.trim() : null,
+        tags,
         sourceJournalEntryId: sourceJournalEntryId ?? null,
         status: "active",
         syncStatus: "local_only",
       });
+      allowNextNavigation();
       router.replace({
         pathname: "/(tabs)/gratitude",
         params: { segment: "lessons" },
@@ -89,7 +95,9 @@ export default function NewLessonScreen() {
           entryType="lesson"
           entryDate={toLocalDateString(new Date())}
           onStructured={handleStructured}
-          hasExistingInput={hasTypedEntryContent([title, content, theme])}
+          hasExistingInput={
+            hasTypedEntryContent([title, content]) || tags.length > 0
+          }
         />
 
         <View style={styles.field}>
@@ -124,17 +132,11 @@ export default function NewLessonScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Theme (optional)</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              value={theme}
-              onChangeText={setTheme}
-              placeholder="e.g. Trust, Patience, Surrender"
-              placeholderTextColor={colors.textSubtle}
-              style={styles.singleLineInput}
-              accessibilityLabel="Lesson theme"
-            />
-          </View>
+          <TagEditor
+            value={tags}
+            onChange={setTags}
+            placeholder="e.g. Trust, Patience, Surrender"
+          />
         </View>
 
         <Text style={styles.hint}>Saved privately on this device only.</Text>

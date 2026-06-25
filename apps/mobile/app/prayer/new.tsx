@@ -15,8 +15,14 @@ import { DateSelector } from "@/components/ui/DateSelector";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
 import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
+import { TagEditor } from "@/components/tags/TagEditor";
 import { createPrayerRequest, toLocalDateString } from "@/lib/db";
-import { hasTypedEntryContent, safeFollowUpDate } from "@/lib/voice-entry-fields";
+import {
+  hasTypedEntryContent,
+  safeFollowUpDate,
+  suggestionTags,
+} from "@/lib/voice-entry-fields";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 export default function NewPrayerRequestScreen() {
@@ -25,11 +31,18 @@ export default function NewPrayerRequestScreen() {
   }>();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [followUp, setFollowUp] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const trimmedTitle = title.trim();
   const canSave = trimmedTitle.length > 0 && !saving;
+  const { allowNextNavigation } = useUnsavedChangesGuard(
+    !saving &&
+      (hasTypedEntryContent([title, description]) ||
+        tags.length > 0 ||
+        followUp !== null),
+  );
 
   function handleStructured(result: StructureVoiceEntryResponse) {
     if (result.entryType !== "prayer") {
@@ -37,6 +50,7 @@ export default function NewPrayerRequestScreen() {
     }
     setTitle(result.fields.title);
     setDescription(result.fields.description ?? "");
+    setTags(suggestionTags(result.fields));
     // Defense-in-depth: never accept an inferred or past follow-up date.
     setFollowUp(safeFollowUpDate(result.fields.followUpAt));
   }
@@ -51,11 +65,13 @@ export default function NewPrayerRequestScreen() {
         title: trimmedTitle,
         description:
           description.trim().length > 0 ? description.trim() : null,
+        tags,
         followUpAt: followUp,
         status: "active",
         sourceJournalEntryId: sourceJournalEntryId ?? null,
         syncStatus: "local_only",
       });
+      allowNextNavigation();
       router.replace("/(tabs)/prayer");
     } catch (error: unknown) {
       // Never log raw prayer content — only an error category.
@@ -122,6 +138,14 @@ export default function NewPrayerRequestScreen() {
               accessibilityLabel="Prayer request details"
             />
           </View>
+        </View>
+
+        <View style={styles.field}>
+          <TagEditor
+            value={tags}
+            onChange={setTags}
+            placeholder="e.g. Family, Provision, Guidance"
+          />
         </View>
 
         <DateSelector

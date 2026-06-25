@@ -48,6 +48,8 @@ const MESSAGES: Record<string, string> = {
     "Graceward's voice service is unavailable right now. Please try again.",
   AI_INVALID_RESPONSE:
     "Graceward couldn't make sense of this recording just now. Please try again.",
+  CONTENT_FLAGGED:
+    "Graceward's companion can't respond to this recording. You can still keep it privately in your journal.",
   FILE_TOO_LARGE: "This recording is too large to process.",
   UNSUPPORTED_AUDIO: "This recording's audio format can't be processed.",
   NO_AUDIO_FILE: "No audio could be found to process.",

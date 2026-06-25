@@ -2,6 +2,7 @@ import * as Crypto from "expo-crypto";
 import type {
   FaithfulnessMomentSuggestion,
   GratitudeSuggestion,
+  InstructionSuggestion,
   LessonSuggestion,
   PrayerSuggestion,
 } from "@graceward/ai-schemas";
@@ -12,14 +13,16 @@ export type SuggestionKind =
   | "prayer"
   | "gratitude"
   | "faithfulness_moment"
-  | "lesson";
+  | "lesson"
+  | "instruction";
 
 /** The local item created when a suggestion is saved. */
 export type CreatedItemType =
   | "prayer_request"
   | "gratitude"
   | "win"
-  | "lesson";
+  | "lesson"
+  | "instruction";
 
 /**
  * Small, deterministic FNV-1a hash → hex. Used to build a compact fingerprint
@@ -65,6 +68,12 @@ export function faithfulnessSuggestionFingerprint(
 
 export function lessonSuggestionFingerprint(s: LessonSuggestion): string {
   return `lesson:${fnv1aHex(canonical([s.title, s.content, s.theme]))}`;
+}
+
+export function instructionSuggestionFingerprint(
+  s: InstructionSuggestion,
+): string {
+  return `instruction:${fnv1aHex(canonical([s.title, s.content]))}`;
 }
 
 export type MarkAiSuggestionSavedInput = {

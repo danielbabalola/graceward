@@ -45,7 +45,7 @@ export function RememberFromReflection({
         style={styles.action}
       />
       <Button
-        label="Save faithfulness moment"
+        label="Save testimony"
         variant="secondary"
         onPress={() =>
           router.push({
@@ -61,6 +61,17 @@ export function RememberFromReflection({
         onPress={() =>
           router.push({
             pathname: "/lesson/new",
+            params: { sourceJournalEntryId: journalEntryId },
+          })
+        }
+        style={styles.action}
+      />
+      <Button
+        label="Save instruction"
+        variant="secondary"
+        onPress={() =>
+          router.push({
+            pathname: "/instruction/new",
             params: { sourceJournalEntryId: journalEntryId },
           })
         }

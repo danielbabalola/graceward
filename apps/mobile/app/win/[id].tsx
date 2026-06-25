@@ -10,12 +10,21 @@ import {
   View,
 } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import type { Win } from "@graceward/shared";
+import type { Tag, Win } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
-import { getWinById, softDeleteWin, updateWin } from "@/lib/db";
+import { TagChips } from "@/components/tags/TagChips";
+import { TagEditor } from "@/components/tags/TagEditor";
+import {
+  getWinById,
+  listTagsForEntry,
+  sameTagNameSet,
+  softDeleteWin,
+  updateWin,
+} from "@/lib/db";
 import { formatItemDate } from "@/lib/gratitude-display";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error" | "not-found";
@@ -24,13 +33,22 @@ export default function WinDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [win, setWin] = useState<Win | null>(null);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [editing, setEditing] = useState(false);
 
   const [contentDraft, setContentDraft] = useState("");
-  const [themeDraft, setThemeDraft] = useState("");
+  const [tagsDraft, setTagsDraft] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  useUnsavedChangesGuard(
+    editing &&
+      !saving &&
+      win != null &&
+      (contentDraft !== win.content ||
+        !sameTagNameSet(tagsDraft, tags.map((tag) => tag.name))),
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -52,6 +70,7 @@ export default function WinDetailScreen() {
             return;
           }
           setWin(result);
+          setTags(await listTagsForEntry("win", id));
           setLoadState("ready");
         } catch (error: unknown) {
           if (active) {
@@ -75,7 +94,7 @@ export default function WinDetailScreen() {
       return;
     }
     setContentDraft(win.content);
-    setThemeDraft(win.faithfulnessTheme ?? "");
+    setTagsDraft(tags.map((tag) => tag.name));
     setEditing(true);
   }
 
@@ -87,12 +106,12 @@ export default function WinDetailScreen() {
     try {
       const updated = await updateWin(win.id, {
         content: contentDraft.trim(),
-        faithfulnessTheme:
-          themeDraft.trim().length > 0 ? themeDraft.trim() : null,
+        tags: tagsDraft,
       });
       if (updated) {
         setWin(updated);
       }
+      setTags(await listTagsForEntry("win", win.id));
       setEditing(false);
     } catch (error: unknown) {
       console.warn(
@@ -113,7 +132,7 @@ export default function WinDetailScreen() {
       return;
     }
     Alert.alert(
-      "Delete this faithfulness moment?",
+      "Delete this testimony?",
       "It will be removed from your device.",
       [
         { text: "Cancel", style: "cancel" },
@@ -143,7 +162,7 @@ export default function WinDetailScreen() {
       );
       Alert.alert(
         "Could not delete",
-        "This faithfulness moment could not be removed just now. Please try again.",
+        "This testimony could not be removed just now. Please try again.",
       );
       setDeleting(false);
     }
@@ -151,7 +170,7 @@ export default function WinDetailScreen() {
 
   if (loadState === "loading") {
     return (
-      <FlowScreen title="Faithfulness moment">
+      <FlowScreen title="Testimony">
         <View style={styles.centered}>
           <ActivityIndicator color={colors.primaryDeep} />
         </View>
@@ -161,10 +180,9 @@ export default function WinDetailScreen() {
 
   if (loadState === "error") {
     return (
-      <FlowScreen title="Faithfulness moment">
+      <FlowScreen title="Testimony">
         <Text style={styles.stateText}>
-          This faithfulness moment could not be loaded. Please try again in a
-          moment.
+          This testimony could not be loaded. Please try again in a moment.
         </Text>
       </FlowScreen>
     );
@@ -172,9 +190,9 @@ export default function WinDetailScreen() {
 
   if (loadState === "not-found" || !win) {
     return (
-      <FlowScreen title="Faithfulness moment">
+      <FlowScreen title="Testimony">
         <Text style={styles.stateText}>
-          This faithfulness moment is no longer available.
+          This testimony is no longer available.
         </Text>
       </FlowScreen>
     );
@@ -182,7 +200,7 @@ export default function WinDetailScreen() {
 
   if (editing) {
     return (
-      <FlowScreen title="Edit faithfulness moment">
+      <FlowScreen title="Edit testimony">
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
@@ -197,23 +215,17 @@ export default function WinDetailScreen() {
                 multiline
                 textAlignVertical="top"
                 style={styles.contentInput}
-                accessibilityLabel="Faithfulness moment"
+                accessibilityLabel="Testimony"
               />
             </View>
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Faithfulness theme (optional)</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                value={themeDraft}
-                onChangeText={setThemeDraft}
-                placeholder="e.g. Provision, Healing, Perseverance"
-                placeholderTextColor={colors.textSubtle}
-                style={styles.singleLineInput}
-                accessibilityLabel="Faithfulness theme"
-              />
-            </View>
+            <TagEditor
+              value={tagsDraft}
+              onChange={setTagsDraft}
+              placeholder="e.g. Provision, Healing, Perseverance"
+            />
           </View>
 
           <Button
@@ -235,15 +247,25 @@ export default function WinDetailScreen() {
     );
   }
 
-  const metaLine = win.faithfulnessTheme?.trim()
-    ? `${formatItemDate(win.createdAt)} · ${win.faithfulnessTheme}`
-    : formatItemDate(win.createdAt);
-
   return (
-    <FlowScreen title="Faithfulness moment" subtitle={metaLine}>
+    <FlowScreen
+      title="Testimony"
+      subtitle={formatItemDate(win.createdAt)}
+    >
       <View style={styles.bodyCard}>
         <Text style={styles.body}>{win.content}</Text>
       </View>
+
+      {tags.length > 0 ? (
+        <View style={styles.tagsBlock}>
+          <TagChips
+            tags={tags}
+            onPressTag={(tag) =>
+              router.push({ pathname: "/tags/[id]", params: { id: tag.id } })
+            }
+          />
+        </View>
+      ) : null}
 
       {win.journalEntryId ? (
         <SourceReflectionLink journalEntryId={win.journalEntryId} />
@@ -284,6 +306,9 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
   },
+  tagsBlock: {
+    marginBottom: spacing.md,
+  },
   privacyLine: {
     ...typography.bodySmall,
     color: colors.textSubtle,
@@ -308,10 +333,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     minHeight: 120,
-  },
-  singleLineInput: {
-    ...typography.body,
-    color: colors.text,
   },
   action: {
     marginBottom: spacing.sm,

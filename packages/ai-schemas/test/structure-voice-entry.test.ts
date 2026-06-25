@@ -9,8 +9,14 @@ import {
 } from "../src/index.js";
 
 describe("voiceEntryTypeSchema", () => {
-  it("accepts the four supported entry types", () => {
-    for (const type of ["prayer", "gratitude", "faithfulness", "lesson"]) {
+  it("accepts the supported entry types", () => {
+    for (const type of [
+      "prayer",
+      "gratitude",
+      "faithfulness",
+      "lesson",
+      "instruction",
+    ]) {
       expect(voiceEntryTypeSchema.safeParse(type).success).toBe(true);
     }
   });
@@ -62,6 +68,7 @@ describe("voiceEntryFieldSchemas", () => {
     expect(Object.keys(voiceEntryFieldSchemas).sort()).toEqual([
       "faithfulness",
       "gratitude",
+      "instruction",
       "lesson",
       "prayer",
     ]);
@@ -178,7 +185,7 @@ describe("structureVoiceEntryResponseSchema", () => {
 
 describe("voice entry constants", () => {
   it("exposes a stable prompt version and transcript bound", () => {
-    expect(STRUCTURE_ENTRY_PROMPT_VERSION).toBe("structure-entry-v1");
+    expect(STRUCTURE_ENTRY_PROMPT_VERSION).toBe("structure-entry-v3");
     expect(MAX_VOICE_ENTRY_TRANSCRIPT_CHARS).toBe(8000);
   });
 });

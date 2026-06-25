@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -23,6 +23,12 @@ type GuidedPromptEditorProps = {
   onSave: (answers: GuidedAnswers) => Promise<void>;
   onCancel?: () => void;
   /**
+   * Reports whether the editor holds answers that differ from the initial
+   * values, so a parent screen can warn before discarding unsaved work. Pass a
+   * stable setter (e.g. a `useState` updater) to avoid effect churn.
+   */
+  onDirtyChange?: (dirty: boolean) => void;
+  /**
    * Optional handler for save failures. When provided it fully owns surfacing
    * the error (e.g. the shared calm handler that gives a specific message for
    * future-dated entries). When omitted, a generic, redacted fallback is shown.
@@ -41,6 +47,7 @@ export function GuidedPromptEditor({
   saveLabel,
   onSave,
   onCancel,
+  onDirtyChange,
   onError,
 }: GuidedPromptEditorProps) {
   const [answers, setAnswers] = useState<GuidedAnswers>(initialAnswers ?? {});
@@ -54,6 +61,20 @@ export function GuidedPromptEditor({
     () => hasMeaningfulAnswer(config, answers) && !saving,
     [config, answers, saving],
   );
+
+  const isDirty = useMemo(
+    () =>
+      config.prompts.some(
+        (item) =>
+          (answers[item.id] ?? "").trim() !==
+          (initialAnswers?.[item.id] ?? "").trim(),
+      ),
+    [config, answers, initialAnswers],
+  );
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const isFirst = index === 0;
   const isLast = index === total - 1;

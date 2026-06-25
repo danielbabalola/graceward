@@ -8,7 +8,49 @@ import { z } from "zod";
 export const AI_SCHEMAS_PACKAGE_VERSION = "0.0.0";
 
 /** Prompt identifier persisted alongside results for future versioning. */
-export const REFLECTION_PROMPT_VERSION = "reflection-v1";
+export const REFLECTION_PROMPT_VERSION = "reflection-v3";
+
+/**
+ * Upper bound on how many unified tags the model may suggest per entry. A safety
+ * clamp only; the prompt asks for a small, relevant set (often zero to three).
+ */
+export const MAX_TAGS_PER_ENTRY = 5;
+
+/**
+ * A small, curated set of canonical theme words for MVP. This is the single
+ * source of truth shared by the AI prompts (which are nudged to prefer these
+ * reusable words) and the mobile TagEditor (which seeds suggestions from them,
+ * especially for a new user with no tags yet). Free-text tags remain fully
+ * allowed — this list only encourages a consistent, shared vocabulary so the
+ * same theme can link a gratitude, a prayer, and a reflection. It is an MVP
+ * seed for future tag/theme features: intentionally short, not exhaustive, and
+ * never enforced.
+ */
+export const CANONICAL_TAGS = [
+  "Family",
+  "Marriage",
+  "Friendship",
+  "Work",
+  "Provision",
+  "Health",
+  "Healing",
+  "Guidance",
+  "Trust",
+  "Patience",
+  "Forgiveness",
+  "Peace",
+  "Gratitude",
+  "Faith",
+  "Hope",
+  "Repentance",
+  "Wisdom",
+  "Calling",
+  "Rest",
+  "Grief",
+] as const;
+
+/** Per-suggestion unified tags: short, optional, may be empty. */
+const tagsSchema = z.array(z.string().min(1)).optional();
 
 /** Reasonable MVP upper bound on reflection length sent for analysis. */
 export const MAX_REFLECTION_CHARS = 8000;
@@ -49,18 +91,23 @@ export const prayerSuggestionSchema = z.object({
   // Monday"). Resolved by the model against the entry date. Null/omitted means
   // the user didn't specify one — never inferred or invented.
   followUpAt: z.string().date().nullable().optional(),
+  tags: tagsSchema,
 });
 export type PrayerSuggestion = z.infer<typeof prayerSuggestionSchema>;
 
 export const gratitudeSuggestionSchema = z.object({
   content: z.string().min(1),
+  /** @deprecated Superseded by `tags`; kept optional for backward compat. */
   category: z.string().optional(),
+  tags: tagsSchema,
 });
 export type GratitudeSuggestion = z.infer<typeof gratitudeSuggestionSchema>;
 
 export const faithfulnessMomentSuggestionSchema = z.object({
   content: z.string().min(1),
+  /** @deprecated Superseded by `tags`; kept optional for backward compat. */
   faithfulnessTheme: z.string().optional(),
+  tags: tagsSchema,
 });
 export type FaithfulnessMomentSuggestion = z.infer<
   typeof faithfulnessMomentSuggestionSchema
@@ -74,9 +121,29 @@ export type FaithfulnessMomentSuggestion = z.infer<
 export const lessonSuggestionSchema = z.object({
   title: z.string().min(1),
   content: z.string().min(1),
+  /** @deprecated Superseded by `tags`; kept optional for backward compat. */
   theme: z.string().optional(),
+  tags: tagsSchema,
 });
 export type LessonSuggestion = z.infer<typeof lessonSuggestionSchema>;
+
+/**
+ * An instruction the user may have expressed in their reflection — something
+ * they sense God is asking, leading, or calling them to do. Surfaced ONLY when
+ * the user explicitly said so in their own words, attributed to them (never the
+ * app claiming "God told you"), and always for the user to review and save
+ * themselves. This is the strictest suggestion type for that reason.
+ */
+export const instructionSuggestionSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+  // Optional "by when" target date (calendar date, YYYY-MM-DD) set ONLY when the
+  // user themselves named a time they intend to act by. Resolved by the model
+  // against the entry date. Null/omitted means none was stated — never inferred.
+  dueAt: z.string().date().nullable().optional(),
+  tags: tagsSchema,
+});
+export type InstructionSuggestion = z.infer<typeof instructionSuggestionSchema>;
 
 export const analyzeReflectionResponseSchema = z.object({
   pastoralReflection: z.string().min(1),
@@ -86,6 +153,7 @@ export const analyzeReflectionResponseSchema = z.object({
     .array(faithfulnessMomentSuggestionSchema)
     .default([]),
   lessonSuggestions: z.array(lessonSuggestionSchema).default([]),
+  instructionSuggestions: z.array(instructionSuggestionSchema).default([]),
   gentleFollowUpQuestions: z.array(z.string().min(1)).default([]),
   safetyNote: z.string().optional(),
 });
@@ -208,7 +276,7 @@ export type TranscribeReflectionResponse = z.infer<
 /* -------------------------------------------------------------------------- */
 
 /** Prompt identifier persisted/sent for future versioning of structuring. */
-export const STRUCTURE_ENTRY_PROMPT_VERSION = "structure-entry-v1";
+export const STRUCTURE_ENTRY_PROMPT_VERSION = "structure-entry-v3";
 
 /**
  * Defensive upper bound on the transcript length the server will structure.
@@ -219,14 +287,17 @@ export const MAX_VOICE_ENTRY_TRANSCRIPT_CHARS = 8000;
 
 /**
  * Entry types that can be created by voice and structured by the AI. These map
- * 1:1 to the four manual create screens (prayer, gratitude, faithfulness,
- * lesson). "faithfulness" is the user-facing name for the internal "wins" type.
+ * 1:1 to the manual create screens (prayer, gratitude, faithfulness, lesson,
+ * instruction). "faithfulness" is the user-facing name for the internal "wins"
+ * type. For "instruction" the AI only transcribes and formats the user's own
+ * spoken words — it never originates or asserts an instruction from God.
  */
 export const voiceEntryTypeSchema = z.enum([
   "prayer",
   "gratitude",
   "faithfulness",
   "lesson",
+  "instruction",
 ]);
 export type VoiceEntryType = z.infer<typeof voiceEntryTypeSchema>;
 
@@ -240,6 +311,7 @@ export const voiceEntryFieldSchemas = {
   gratitude: gratitudeSuggestionSchema,
   faithfulness: faithfulnessMomentSuggestionSchema,
   lesson: lessonSuggestionSchema,
+  instruction: instructionSuggestionSchema,
 } as const;
 
 /**
@@ -283,6 +355,11 @@ export const structureVoiceEntryResponseSchema = z.discriminatedUnion(
       entryType: z.literal("lesson"),
       transcript: z.string().min(1),
       fields: lessonSuggestionSchema,
+    }),
+    z.object({
+      entryType: z.literal("instruction"),
+      transcript: z.string().min(1),
+      fields: instructionSuggestionSchema,
     }),
   ],
 );

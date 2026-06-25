@@ -1,4 +1,6 @@
 import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import type { Tag } from "@graceward/shared";
+import { TagChips } from "@/components/tags/TagChips";
 import { colors, radii, shadows, spacing, typography } from "@/theme/tokens";
 
 type ItemCardProps = {
@@ -7,6 +9,7 @@ type ItemCardProps = {
   onPress?: () => void;
   accentColor?: string;
   accessibilityLabel?: string;
+  tags?: Tag[];
 };
 
 export function ItemCard({
@@ -15,6 +18,7 @@ export function ItemCard({
   onPress,
   accentColor,
   accessibilityLabel,
+  tags,
 }: ItemCardProps) {
   const accentStyle: ViewStyle | undefined = accentColor
     ? { borderColor: accentColor }
@@ -26,6 +30,11 @@ export function ItemCard({
       <Text style={styles.content} numberOfLines={3}>
         {content}
       </Text>
+      {tags && tags.length > 0 ? (
+        <View style={styles.tags}>
+          <TagChips tags={tags} />
+        </View>
+      ) : null}
     </>
   );
 
@@ -70,5 +79,8 @@ const styles = StyleSheet.create({
   content: {
     ...typography.body,
     color: colors.text,
+  },
+  tags: {
+    marginTop: spacing.xs,
   },
 });

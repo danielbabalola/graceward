@@ -9,6 +9,7 @@ import {
 import { createAudioAsset, createJournalEntry } from "@/lib/db";
 import { persistRecording } from "@/lib/audio-storage";
 import { resolveInitialEntryDate } from "@/lib/reflection-date";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
 export default function FreeFlowSpeakScreen() {
   const { entryDate: entryDateParam } = useLocalSearchParams<{
@@ -17,6 +18,12 @@ export default function FreeFlowSpeakScreen() {
   const [entryDate, setEntryDate] = useState(() =>
     resolveInitialEntryDate(entryDateParam),
   );
+  const [dirty, setDirty] = useState(false);
+  const { allowNextNavigation } = useUnsavedChangesGuard(dirty, {
+    title: "Discard recording?",
+    message:
+      "You have a recording that hasn't been saved. If you leave now, it'll be lost.",
+  });
 
   async function handleSave({ uri, durationSeconds }: VoiceRecording) {
     const entry = await createJournalEntry({
@@ -43,6 +50,7 @@ export default function FreeFlowSpeakScreen() {
       syncStatus: "local_only",
     });
 
+    allowNextNavigation();
     router.replace("/(tabs)/journal");
   }
 
@@ -53,6 +61,7 @@ export default function FreeFlowSpeakScreen() {
     >
       <VoiceRecorder
         onSave={handleSave}
+        onDirtyChange={setDirty}
         header={
           <ReflectionDateSelector value={entryDate} onChange={setEntryDate} />
         }

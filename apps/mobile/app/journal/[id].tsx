@@ -19,6 +19,7 @@ import { JournalAiSection } from "@/components/journal/JournalAiSection";
 import { VoiceTranscription } from "@/components/journal/VoiceTranscription";
 import { LinkedFromReflection } from "@/components/journal/LinkedFromReflection";
 import { RememberFromReflection } from "@/components/journal/RememberFromReflection";
+import { EntryTagsSection } from "@/components/tags/EntryTagsSection";
 import { canAnalyzeEntry } from "@/lib/api/reflection";
 import {
   getAudioAssetByEntryId,
@@ -46,6 +47,7 @@ import {
   type GuidedVoicePayload,
 } from "@/lib/guided-payload";
 import type { GuidedAnswers } from "@/lib/reflection-flow";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error" | "not-found";
@@ -59,9 +61,18 @@ export default function JournalEntryDetailScreen() {
 
   const [editing, setEditing] = useState(false);
   const [structuredEditing, setStructuredEditing] = useState(false);
+  const [structuredDirty, setStructuredDirty] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  useUnsavedChangesGuard(
+    (editing &&
+      !saving &&
+      entry != null &&
+      draft.trim() !== (entry.rawText ?? "").trim()) ||
+      (structuredEditing && structuredDirty),
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -306,6 +317,14 @@ export default function JournalEntryDetailScreen() {
           onTranscribed={setEntry}
         />
 
+        <EntryTagsSection
+          entryType="journal_entry"
+          entryId={entry.id}
+          onPressTag={(tag) =>
+            router.push({ pathname: "/tags/[id]", params: { id: tag.id } })
+          }
+        />
+
         <LinkedFromReflection journalEntryId={entry.id} />
 
         <RememberFromReflection journalEntryId={entry.id} />
@@ -332,6 +351,7 @@ export default function JournalEntryDetailScreen() {
           saveLabel="Save changes"
           onSave={(answers) => handleStructuredSave(guidedTextPayload, answers)}
           onCancel={() => setStructuredEditing(false)}
+          onDirtyChange={setStructuredDirty}
         />
       </FlowScreen>
     );
@@ -360,6 +380,14 @@ export default function JournalEntryDetailScreen() {
         </Text>
 
         {canAnalyzeEntry(entry) ? <JournalAiSection entry={entry} /> : null}
+
+        <EntryTagsSection
+          entryType="journal_entry"
+          entryId={entry.id}
+          onPressTag={(tag) =>
+            router.push({ pathname: "/tags/[id]", params: { id: tag.id } })
+          }
+        />
 
         <LinkedFromReflection journalEntryId={entry.id} />
 
@@ -427,6 +455,14 @@ export default function JournalEntryDetailScreen() {
             </Text>
 
             {canAnalyzeEntry(entry) ? <JournalAiSection entry={entry} /> : null}
+
+            <EntryTagsSection
+              entryType="journal_entry"
+              entryId={entry.id}
+              onPressTag={(tag) =>
+                router.push({ pathname: "/tags/[id]", params: { id: tag.id } })
+              }
+            />
 
             <LinkedFromReflection journalEntryId={entry.id} />
 
