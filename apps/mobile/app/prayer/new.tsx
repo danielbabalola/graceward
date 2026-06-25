@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { DateSelector } from "@/components/ui/DateSelector";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
+import { PolishWithAi } from "@/components/entry/PolishWithAi";
 import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
 import { TagEditor } from "@/components/tags/TagEditor";
 import { createPrayerRequest, toLocalDateString } from "@/lib/db";
@@ -44,15 +45,24 @@ export default function NewPrayerRequestScreen() {
         followUp !== null),
   );
 
+  function applyPrayerFields(fields: {
+    title: string;
+    description?: string;
+    followUpAt?: string | null;
+    tags?: string[];
+  }) {
+    setTitle(fields.title);
+    setDescription(fields.description ?? "");
+    setTags(suggestionTags(fields));
+    // Defense-in-depth: never accept an inferred or past follow-up date.
+    setFollowUp(safeFollowUpDate(fields.followUpAt));
+  }
+
   function handleStructured(result: StructureVoiceEntryResponse) {
     if (result.entryType !== "prayer") {
       return;
     }
-    setTitle(result.fields.title);
-    setDescription(result.fields.description ?? "");
-    setTags(suggestionTags(result.fields));
-    // Defense-in-depth: never accept an inferred or past follow-up date.
-    setFollowUp(safeFollowUpDate(result.fields.followUpAt));
+    applyPrayerFields(result.fields);
   }
 
   async function handleSave() {
@@ -107,6 +117,30 @@ export default function NewPrayerRequestScreen() {
           entryDate={toLocalDateString(new Date())}
           onStructured={handleStructured}
           hasExistingInput={hasTypedEntryContent([title, description])}
+        />
+
+        <PolishWithAi
+          entryType="prayer"
+          entryDate={toLocalDateString(new Date())}
+          getText={() =>
+            [title, description]
+              .filter((value) => value.trim().length > 0)
+              .join("\n\n")
+          }
+          disabled={saving}
+          onApplyTitle={setTitle}
+          onApplyContent={setDescription}
+          onApplyTags={setTags}
+          onApplyDate={(date) => setFollowUp(safeFollowUpDate(date))}
+          getCurrentValues={() => ({
+            title,
+            content: description,
+            tags,
+            date: followUp,
+          })}
+          titleNoun="title"
+          contentNoun="details"
+          dateNoun="follow-up date"
         />
 
         <View style={styles.field}>

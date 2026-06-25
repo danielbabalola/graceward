@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { StyleSheet, Text, View, ViewStyle } from "react-native";
 import type { Tag } from "@graceward/shared";
 import { TagChips } from "@/components/tags/TagChips";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { colors, radii, shadows, spacing, typography } from "@/theme/tokens";
 
 type ItemCardProps = {
@@ -43,18 +44,14 @@ export function ItemCard({
   }
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [
-        styles.card,
-        accentStyle,
-        pressed && styles.pressed,
-      ]}
+      style={[styles.card, accentStyle]}
     >
       {inner}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -67,9 +64,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
     ...shadows.card,
-  },
-  pressed: {
-    opacity: 0.92,
   },
   meta: {
     ...typography.caption,

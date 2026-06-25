@@ -1,10 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import type { PrayerRequest, Tag, Win } from "@graceward/shared";
 import { Card } from "@/components/ui/Card";
 import { Section } from "@/components/ui/Section";
 import { ItemCard } from "@/components/gratitude/ItemCard";
+import { AppearingView } from "@/components/ui/AppearingView";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { TagFilterBar } from "@/components/tags/TagFilterBar";
 import { collectDistinctTags } from "@/lib/tag-display";
 import {
@@ -105,11 +108,7 @@ export function FaithfulnessView() {
   }, [answered, answeredTags, selectedTagId]);
 
   if (loadState === "loading") {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={colors.primaryDeep} />
-      </View>
-    );
+    return <ListSkeleton />;
   }
 
   if (loadState === "error") {
@@ -126,8 +125,8 @@ export function FaithfulnessView() {
     return (
       <View style={styles.container}>
         <Text style={styles.explanation}>{EXPLANATION}</Text>
-        <Card
-          variant="subtle"
+        <EmptyState
+          icon="sparkles-outline"
           title="Testimonies grow over time"
           description="Answered prayers and major moments of God's faithfulness will appear here over time."
         />
@@ -146,49 +145,51 @@ export function FaithfulnessView() {
       />
 
       {visibleAnswered.length > 0 ? (
-        <Section title="Answered prayers">
-          {visibleAnswered.map((request) => (
-            <ItemCard
-              key={request.id}
-              meta={
-                formatPrayerDate(request.answeredAt)
-                  ? `Answered · ${formatPrayerDate(request.answeredAt)}`
-                  : "Answered"
-              }
-              content={request.title}
-              tags={answeredTags.get(request.id)}
-              accentColor={colors.answeredPrayerAccent}
-              accessibilityLabel={`Open answered prayer: ${request.title}`}
-              onPress={() =>
-                router.push({
-                  pathname: "/prayer/[id]",
-                  params: { id: request.id },
-                })
-              }
-            />
+        <Section title="Answered prayers" icon="checkmark-done-outline">
+          {visibleAnswered.map((request, i) => (
+            <AppearingView key={request.id} index={i}>
+              <ItemCard
+                meta={
+                  formatPrayerDate(request.answeredAt)
+                    ? `Answered · ${formatPrayerDate(request.answeredAt)}`
+                    : "Answered"
+                }
+                content={request.title}
+                tags={answeredTags.get(request.id)}
+                accentColor={colors.answeredPrayerAccent}
+                accessibilityLabel={`Open answered prayer: ${request.title}`}
+                onPress={() =>
+                  router.push({
+                    pathname: "/prayer/[id]",
+                    params: { id: request.id },
+                  })
+                }
+              />
+            </AppearingView>
           ))}
         </Section>
       ) : null}
 
       {visibleWins.length > 0 ? (
-        <Section title="Testimonies">
-          {visibleWins.map((win) => (
-            <ItemCard
-              key={win.id}
-              meta={winMetaLine(win)}
-              content={contentPreview(win.content)}
-              tags={winTags.get(win.id)}
-              accentColor={colors.accentGold}
-              accessibilityLabel={`Open testimony: ${contentPreview(
-                win.content,
-              )}`}
-              onPress={() =>
-                router.push({
-                  pathname: "/win/[id]",
-                  params: { id: win.id },
-                })
-              }
-            />
+        <Section title="Testimonies" icon="sparkles-outline">
+          {visibleWins.map((win, i) => (
+            <AppearingView key={win.id} index={i}>
+              <ItemCard
+                meta={winMetaLine(win)}
+                content={contentPreview(win.content)}
+                tags={winTags.get(win.id)}
+                accentColor={colors.accentGold}
+                accessibilityLabel={`Open testimony: ${contentPreview(
+                  win.content,
+                )}`}
+                onPress={() =>
+                  router.push({
+                    pathname: "/win/[id]",
+                    params: { id: win.id },
+                  })
+                }
+              />
+            </AppearingView>
           ))}
         </Section>
       ) : null}
@@ -197,10 +198,6 @@ export function FaithfulnessView() {
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    paddingVertical: spacing.xxl,
-    alignItems: "center",
-  },
   container: {
     gap: spacing.sm,
   },

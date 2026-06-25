@@ -10,36 +10,41 @@ import {
   View,
 } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import type { Instruction, Tag } from "@graceward/shared";
+import type { Revelation, Tag } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
 import { DateSelector } from "@/components/ui/DateSelector";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
+import { PolishWithAi } from "@/components/entry/PolishWithAi";
 import { TagChips } from "@/components/tags/TagChips";
 import { TagEditor } from "@/components/tags/TagEditor";
 import {
-  fulfillInstruction,
-  getInstructionById,
+  fulfillRevelation,
+  getRevelationById,
   listTagsForEntry,
-  reopenInstruction,
+  reopenRevelation,
   sameTagNameSet,
-  softDeleteInstruction,
-  updateInstruction,
+  softDeleteRevelation,
+  toLocalDateString,
+  updateRevelation,
 } from "@/lib/db";
+import { safeFollowUpDate } from "@/lib/voice-entry-fields";
 import {
-  instructionIsDue,
-  instructionMetaLine,
-} from "@/lib/instruction-display";
+  revelationFulfilledLabel,
+  revelationIsDue,
+  revelationKindLabel,
+  revelationMetaLine,
+} from "@/lib/revelation-display";
 import { formatEntryDate } from "@/lib/journal-display";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error" | "not-found";
 
-export default function InstructionDetailScreen() {
+export default function RevelationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [instruction, setInstruction] = useState<Instruction | null>(null);
+  const [revelation, setRevelation] = useState<Revelation | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [editing, setEditing] = useState(false);
@@ -48,17 +53,22 @@ export default function InstructionDetailScreen() {
   const [contentDraft, setContentDraft] = useState("");
   const [tagsDraft, setTagsDraft] = useState<string[]>([]);
   const [dueAtDraft, setDueAtDraft] = useState<string | null>(null);
+  const [occurredAtDraft, setOccurredAtDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const kindLabel = revelation ? revelationKindLabel(revelation.kind) : "Revelation";
+  const isInstruction = revelation?.kind === "instruction";
+
   useUnsavedChangesGuard(
     editing &&
       !saving &&
-      instruction != null &&
-      (titleDraft !== instruction.title ||
-        contentDraft !== instruction.content ||
-        dueAtDraft !== instruction.dueAt ||
+      revelation != null &&
+      (titleDraft !== revelation.title ||
+        contentDraft !== revelation.content ||
+        dueAtDraft !== revelation.dueAt ||
+        occurredAtDraft !== revelation.occurredAt ||
         !sameTagNameSet(tagsDraft, tags.map((tag) => tag.name))),
   );
 
@@ -73,7 +83,7 @@ export default function InstructionDetailScreen() {
 
       (async () => {
         try {
-          const result = await getInstructionById(id);
+          const result = await getRevelationById(id);
           if (!active) {
             return;
           }
@@ -81,15 +91,15 @@ export default function InstructionDetailScreen() {
             setLoadState("not-found");
             return;
           }
-          setInstruction(result);
-          setTags(await listTagsForEntry("instruction", id));
+          setRevelation(result);
+          setTags(await listTagsForEntry(result.kind, id));
           setLoadState("ready");
         } catch (error: unknown) {
           if (active) {
             setLoadState("error");
           }
           console.warn(
-            "Failed to load instruction:",
+            "Failed to load revelation:",
             error instanceof Error ? error.message : "unknown error",
           );
         }
@@ -102,19 +112,20 @@ export default function InstructionDetailScreen() {
   );
 
   function startEditing() {
-    if (!instruction) {
+    if (!revelation) {
       return;
     }
-    setTitleDraft(instruction.title);
-    setContentDraft(instruction.content);
+    setTitleDraft(revelation.title);
+    setContentDraft(revelation.content);
     setTagsDraft(tags.map((tag) => tag.name));
-    setDueAtDraft(instruction.dueAt);
+    setDueAtDraft(revelation.dueAt);
+    setOccurredAtDraft(revelation.occurredAt);
     setEditing(true);
   }
 
   async function handleSave() {
     if (
-      !instruction ||
+      !revelation ||
       titleDraft.trim().length === 0 ||
       contentDraft.trim().length === 0 ||
       saving
@@ -123,20 +134,21 @@ export default function InstructionDetailScreen() {
     }
     setSaving(true);
     try {
-      const updated = await updateInstruction(instruction.id, {
+      const updated = await updateRevelation(revelation.id, {
         title: titleDraft.trim(),
         content: contentDraft.trim(),
-        dueAt: dueAtDraft,
+        dueAt: isInstruction ? dueAtDraft : null,
+        occurredAt: isInstruction ? undefined : occurredAtDraft,
         tags: tagsDraft,
       });
       if (updated) {
-        setInstruction(updated);
+        setRevelation(updated);
       }
-      setTags(await listTagsForEntry("instruction", instruction.id));
+      setTags(await listTagsForEntry(revelation.kind, revelation.id));
       setEditing(false);
     } catch (error: unknown) {
       console.warn(
-        "Failed to update instruction:",
+        "Failed to update revelation:",
         error instanceof Error ? error.message : "unknown error",
       );
       Alert.alert(
@@ -148,27 +160,48 @@ export default function InstructionDetailScreen() {
     }
   }
 
-  async function handleToggleStatus() {
-    if (!instruction || updatingStatus) {
+  function handleToggleStatus() {
+    if (!revelation || updatingStatus) {
+      return;
+    }
+    const word = revelationFulfilledLabel(revelation.kind).toLowerCase();
+    // Confirm before marking done (the consequential direction); reopening is
+    // restorative, so it happens immediately.
+    if (revelation.status === "active") {
+      Alert.alert(
+        `Mark this ${word}?`,
+        "It will move out of your active list. You can reopen it any time.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Confirm", onPress: () => void performToggleStatus() },
+        ],
+      );
+      return;
+    }
+    void performToggleStatus();
+  }
+
+  async function performToggleStatus() {
+    if (!revelation || updatingStatus) {
       return;
     }
     setUpdatingStatus(true);
     try {
       const updated =
-        instruction.status === "active"
-          ? await fulfillInstruction(instruction.id)
-          : await reopenInstruction(instruction.id);
+        revelation.status === "active"
+          ? await fulfillRevelation(revelation.id)
+          : await reopenRevelation(revelation.id);
       if (updated) {
-        setInstruction(updated);
+        setRevelation(updated);
       }
     } catch (error: unknown) {
       console.warn(
-        "Failed to change instruction status:",
+        "Failed to change revelation status:",
         error instanceof Error ? error.message : "unknown error",
       );
       Alert.alert(
         "Could not update",
-        "This instruction could not be updated just now. Please try again.",
+        "This could not be updated just now. Please try again.",
       );
     } finally {
       setUpdatingStatus(false);
@@ -176,41 +209,42 @@ export default function InstructionDetailScreen() {
   }
 
   function confirmDelete() {
-    if (!instruction) {
+    if (!revelation) {
       return;
     }
-    Alert.alert(
-      "Delete this instruction?",
-      "It will be removed from your device.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            void handleDelete();
-          },
+    Alert.alert("Delete this?", "It will be removed from your device.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          void handleDelete();
         },
-      ],
-    );
+      },
+    ]);
   }
 
   async function handleDelete() {
-    if (!instruction || deleting) {
+    if (!revelation || deleting) {
       return;
     }
     setDeleting(true);
     try {
-      await softDeleteInstruction(instruction.id);
-      router.replace("/(tabs)/gratitude");
+      await softDeleteRevelation(revelation.id);
+      router.replace({
+        pathname: "/(tabs)/gratitude",
+        params: {
+          segment: revelation.kind === "instruction" ? "instructions" : "revelations",
+        },
+      });
     } catch (error: unknown) {
       console.warn(
-        "Failed to delete instruction:",
+        "Failed to delete revelation:",
         error instanceof Error ? error.message : "unknown error",
       );
       Alert.alert(
         "Could not delete",
-        "This instruction could not be removed just now. Please try again.",
+        "This could not be removed just now. Please try again.",
       );
       setDeleting(false);
     }
@@ -218,7 +252,7 @@ export default function InstructionDetailScreen() {
 
   if (loadState === "loading") {
     return (
-      <FlowScreen title="Instruction">
+      <FlowScreen title={kindLabel}>
         <View style={styles.centered}>
           <ActivityIndicator color={colors.primaryDeep} />
         </View>
@@ -228,46 +262,78 @@ export default function InstructionDetailScreen() {
 
   if (loadState === "error") {
     return (
-      <FlowScreen title="Instruction">
+      <FlowScreen title={kindLabel}>
         <Text style={styles.stateText}>
-          This instruction could not be loaded. Please try again in a moment.
+          This could not be loaded. Please try again in a moment.
         </Text>
       </FlowScreen>
     );
   }
 
-  if (loadState === "not-found" || !instruction) {
+  if (loadState === "not-found" || !revelation) {
     return (
-      <FlowScreen title="Instruction">
-        <Text style={styles.stateText}>
-          This instruction is no longer available.
-        </Text>
+      <FlowScreen title={kindLabel}>
+        <Text style={styles.stateText}>This is no longer available.</Text>
       </FlowScreen>
     );
   }
 
   if (editing) {
     return (
-      <FlowScreen title="Edit instruction">
+      <FlowScreen title={`Edit ${kindLabel.toLowerCase()}`}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
+          <PolishWithAi
+            entryType={revelation.kind}
+            entryDate={toLocalDateString(new Date())}
+            getText={() =>
+              [titleDraft, contentDraft]
+                .filter((value) => value.trim().length > 0)
+                .join("\n\n")
+            }
+            disabled={saving}
+            onApplyTitle={setTitleDraft}
+            onApplyContent={setContentDraft}
+            onApplyTags={setTagsDraft}
+            onApplyDate={
+              isInstruction
+                ? (date) => setDueAtDraft(safeFollowUpDate(date))
+                : undefined
+            }
+            getCurrentValues={() => ({
+              title: titleDraft,
+              content: contentDraft,
+              tags: tagsDraft,
+              date: dueAtDraft,
+            })}
+            titleNoun="name"
+            contentNoun={
+              revelation.kind === "dream"
+                ? "dream"
+                : revelation.kind === "prophecy"
+                  ? "word"
+                  : "details"
+            }
+            dateNoun="by-when date"
+          />
+
           <View style={styles.field}>
-            <Text style={styles.label}>An instruction I'm holding</Text>
+            <Text style={styles.label}>Title</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 value={titleDraft}
                 onChangeText={setTitleDraft}
-                placeholder="A short name for this instruction…"
+                placeholder="A short name…"
                 placeholderTextColor={colors.textSubtle}
                 style={styles.singleLineInput}
-                accessibilityLabel="Instruction title"
+                accessibilityLabel={`${kindLabel} title`}
               />
             </View>
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>What I sense I'm being asked to do</Text>
+            <Text style={styles.label}>Details</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 value={contentDraft}
@@ -277,7 +343,7 @@ export default function InstructionDetailScreen() {
                 multiline
                 textAlignVertical="top"
                 style={styles.contentInput}
-                accessibilityLabel="Instruction content"
+                accessibilityLabel={`${kindLabel} content`}
               />
             </View>
           </View>
@@ -286,19 +352,37 @@ export default function InstructionDetailScreen() {
             <TagEditor
               value={tagsDraft}
               onChange={setTagsDraft}
-              placeholder="e.g. Obedience, Generosity, Step of faith"
+              placeholder="e.g. Guidance, Trust, Calling"
             />
           </View>
 
-          <DateSelector
-            label="By when (optional)"
-            value={dueAtDraft}
-            onChange={setDueAtDraft}
-            disablePast
-            allowClear
-            emptyLabel="No target date"
-            hint="If you sense a timeframe, set a gentle day to aim for. Today or later."
-          />
+          {!isInstruction ? (
+            <DateSelector
+              label={
+                revelation.kind === "dream"
+                  ? "When you had this dream (optional)"
+                  : "When you received this word (optional)"
+              }
+              value={occurredAtDraft}
+              onChange={setOccurredAtDraft}
+              maxDate={toLocalDateString(new Date())}
+              allowClear
+              emptyLabel="No date"
+              hint="The day it came to you. Today or a past day."
+            />
+          ) : null}
+
+          {isInstruction ? (
+            <DateSelector
+              label="By when (optional)"
+              value={dueAtDraft}
+              onChange={setDueAtDraft}
+              disablePast
+              allowClear
+              emptyLabel="No target date"
+              hint="If you sense a timeframe, set a gentle day to aim for. Today or later."
+            />
+          ) : null}
 
           <Button
             label="Save changes"
@@ -325,17 +409,17 @@ export default function InstructionDetailScreen() {
 
   return (
     <FlowScreen
-      title={instruction.title}
-      subtitle={instructionMetaLine(instruction)}
+      title={revelation.title}
+      subtitle={revelationMetaLine(revelation)}
     >
       <View style={styles.bodyCard}>
-        <Text style={styles.body}>{instruction.content}</Text>
+        <Text style={styles.body}>{revelation.content}</Text>
       </View>
 
-      {instruction.dueAt ? (
+      {isInstruction && revelation.dueAt ? (
         <Text style={styles.dueLine}>
-          By when: {formatEntryDate(instruction.dueAt)}
-          {instructionIsDue(instruction) ? " · Time to revisit" : ""}
+          By when: {formatEntryDate(revelation.dueAt)}
+          {revelationIsDue(revelation) ? " · Time to revisit" : ""}
         </Text>
       ) : null}
 
@@ -350,8 +434,8 @@ export default function InstructionDetailScreen() {
         </View>
       ) : null}
 
-      {instruction.sourceJournalEntryId ? (
-        <SourceReflectionLink journalEntryId={instruction.sourceJournalEntryId} />
+      {revelation.sourceJournalEntryId ? (
+        <SourceReflectionLink journalEntryId={revelation.sourceJournalEntryId} />
       ) : null}
 
       <Text style={styles.privacyLine}>Private to this device.</Text>
@@ -359,7 +443,9 @@ export default function InstructionDetailScreen() {
       <Button label="Edit" onPress={startEditing} style={styles.action} />
       <Button
         label={
-          instruction.status === "active" ? "Mark fulfilled" : "Reopen"
+          revelation.status === "active"
+            ? `Mark ${revelationFulfilledLabel(revelation.kind).toLowerCase()}`
+            : "Reopen"
         }
         variant="secondary"
         onPress={handleToggleStatus}

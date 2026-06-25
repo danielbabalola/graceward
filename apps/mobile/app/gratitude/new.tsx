@@ -13,6 +13,7 @@ import type { StructureVoiceEntryResponse } from "@graceward/ai-schemas";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
+import { PolishWithAi } from "@/components/entry/PolishWithAi";
 import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
 import { TagEditor } from "@/components/tags/TagEditor";
 import { createGratitude, toLocalDateString } from "@/lib/db";
@@ -92,6 +93,17 @@ export default function NewGratitudeScreen() {
           entryDate={toLocalDateString(new Date())}
           onStructured={handleStructured}
           hasExistingInput={hasTypedEntryContent([content]) || tags.length > 0}
+        />
+
+        <PolishWithAi
+          entryType="gratitude"
+          entryDate={toLocalDateString(new Date())}
+          getText={() => content}
+          disabled={saving}
+          onApplyContent={setContent}
+          onApplyTags={setTags}
+          getCurrentValues={() => ({ content, tags })}
+          contentNoun="gratitude"
         />
 
         <View style={styles.field}>

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { DateSelector } from "@/components/ui/DateSelector";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
+import { PolishWithAi } from "@/components/entry/PolishWithAi";
 import { TagChips } from "@/components/tags/TagChips";
 import { TagEditor } from "@/components/tags/TagEditor";
 import {
@@ -25,9 +26,11 @@ import {
   reactivatePrayerRequest,
   sameTagNameSet,
   softDeletePrayerRequest,
+  toLocalDateString,
   updatePrayerRequest,
 } from "@/lib/db";
 import { formatPrayerDate, prayerStatusLabel } from "@/lib/prayer-display";
+import { safeFollowUpDate } from "@/lib/voice-entry-fields";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
@@ -348,6 +351,30 @@ export default function PrayerRequestDetailScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
+          <PolishWithAi
+            entryType="prayer"
+            entryDate={toLocalDateString(new Date())}
+            getText={() =>
+              [titleDraft, descriptionDraft]
+                .filter((value) => value.trim().length > 0)
+                .join("\n\n")
+            }
+            disabled={saving}
+            onApplyTitle={setTitleDraft}
+            onApplyContent={setDescriptionDraft}
+            onApplyTags={setTagsDraft}
+            onApplyDate={(date) => setFollowUpDraft(safeFollowUpDate(date))}
+            getCurrentValues={() => ({
+              title: titleDraft,
+              content: descriptionDraft,
+              tags: tagsDraft,
+              date: followUpDraft,
+            })}
+            titleNoun="title"
+            contentNoun="details"
+            dateNoun="follow-up date"
+          />
+
           <View style={styles.field}>
             <Text style={styles.label}>Title</Text>
             <View style={styles.inputWrapper}>

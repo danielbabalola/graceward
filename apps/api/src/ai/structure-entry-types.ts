@@ -1,8 +1,11 @@
 import type {
+  DreamSuggestion,
   FaithfulnessMomentSuggestion,
   GratitudeSuggestion,
+  InstructionSuggestion,
   LessonSuggestion,
   PrayerSuggestion,
+  ProphecySuggestion,
 } from "@graceward/ai-schemas";
 import type { StructureEntryInput } from "./structure-entry-prompt.js";
 
@@ -11,7 +14,10 @@ export type VoiceEntryFields =
   | PrayerSuggestion
   | GratitudeSuggestion
   | FaithfulnessMomentSuggestion
-  | LessonSuggestion;
+  | LessonSuggestion
+  | DreamSuggestion
+  | ProphecySuggestion
+  | InstructionSuggestion;
 
 /**
  * Provider boundary for turning a spoken-note transcript into a single entry's

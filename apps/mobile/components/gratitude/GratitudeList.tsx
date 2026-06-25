@@ -1,14 +1,17 @@
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import type { Gratitude, Tag } from "@graceward/shared";
 import { Card } from "@/components/ui/Card";
 import { ItemCard } from "@/components/gratitude/ItemCard";
+import { AppearingView } from "@/components/ui/AppearingView";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { TagFilterBar } from "@/components/tags/TagFilterBar";
 import { collectDistinctTags } from "@/lib/tag-display";
 import { listGratitudes, listTagsForEntries } from "@/lib/db";
 import { contentPreview, gratitudeMetaLine } from "@/lib/gratitude-display";
-import { colors, spacing } from "@/theme/tokens";
+import { spacing } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -60,11 +63,7 @@ export function GratitudeList() {
   }, [items, tagMap, selectedTagId]);
 
   if (loadState === "loading") {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={colors.primaryDeep} />
-      </View>
-    );
+    return <ListSkeleton />;
   }
 
   if (loadState === "error") {
@@ -79,8 +78,8 @@ export function GratitudeList() {
 
   if (items.length === 0) {
     return (
-      <Card
-        variant="subtle"
+      <EmptyState
+        icon="bookmark-outline"
         title="Notice one mercy from today"
         description="Name something specific you're thankful for, no matter how small."
       />
@@ -94,30 +93,27 @@ export function GratitudeList() {
         selectedId={selectedTagId}
         onSelect={setSelectedTagId}
       />
-      {visibleItems.map((item) => (
-        <ItemCard
-          key={item.id}
-          meta={gratitudeMetaLine(item)}
-          content={contentPreview(item.content)}
-          tags={tagMap.get(item.id)}
-          accessibilityLabel={`Open gratitude: ${contentPreview(item.content)}`}
-          onPress={() =>
-            router.push({
-              pathname: "/gratitude/[id]",
-              params: { id: item.id },
-            })
-          }
-        />
+      {visibleItems.map((item, i) => (
+        <AppearingView key={item.id} index={i}>
+          <ItemCard
+            meta={gratitudeMetaLine(item)}
+            content={contentPreview(item.content)}
+            tags={tagMap.get(item.id)}
+            accessibilityLabel={`Open gratitude: ${contentPreview(item.content)}`}
+            onPress={() =>
+              router.push({
+                pathname: "/gratitude/[id]",
+                params: { id: item.id },
+              })
+            }
+          />
+        </AppearingView>
       ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    paddingVertical: spacing.xxl,
-    alignItems: "center",
-  },
   list: {
     gap: spacing.sm,
   },

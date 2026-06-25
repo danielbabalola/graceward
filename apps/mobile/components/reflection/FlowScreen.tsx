@@ -25,10 +25,11 @@ export function FlowScreen({
   showBack = true,
 }: FlowScreenProps) {
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {showBack ? (
           <Pressable

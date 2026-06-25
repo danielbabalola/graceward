@@ -1,14 +1,15 @@
 import type {
   AudioAsset,
   Gratitude,
-  Instruction,
   JournalEntry,
   Lesson,
   PrayerRequest,
+  Revelation,
   Tag,
   Win,
 } from "@graceward/shared";
 import { deleteAllLocalAudio } from "@/lib/audio-storage";
+import { deleteAllExports } from "@/lib/export-paths";
 import { getDatabase } from "./client";
 import { listAudioAssetsForExport } from "./audio";
 import { listJournalEntries } from "./journal";
@@ -16,7 +17,7 @@ import { listPrayerRequests } from "./prayer";
 import { listGratitudes } from "./gratitude";
 import { listWins } from "./wins";
 import { listLessons } from "./lessons";
-import { listInstructions } from "./instructions";
+import { listRevelations } from "./revelations";
 import {
   listAllTags,
   listEntryTagsForExport,
@@ -42,7 +43,7 @@ export type LocalDataExport = {
     gratitudes: number;
     faithfulnessMoments: number;
     lessons: number;
-    instructions: number;
+    revelations: number;
     audioAssets: number;
     savedAiSuggestions: number;
     tags: number;
@@ -52,7 +53,8 @@ export type LocalDataExport = {
   gratitudes: Gratitude[];
   faithfulnessMoments: Win[];
   lessons: Lesson[];
-  instructions: Instruction[];
+  // Dreams, prophecies, and instructions (each row carries its `kind`).
+  revelations: Revelation[];
   audioAssets: AudioAsset[];
   // Metadata only (kind + references + timestamps). No raw suggestion text.
   savedAiSuggestions: SavedSuggestionExport[];
@@ -77,7 +79,7 @@ export async function listAllForExport(): Promise<LocalDataExport> {
     gratitudes,
     faithfulnessMoments,
     lessons,
-    instructions,
+    revelations,
     audioAssets,
     savedAiSuggestions,
     tags,
@@ -88,7 +90,7 @@ export async function listAllForExport(): Promise<LocalDataExport> {
     listGratitudes(),
     listWins(),
     listLessons(),
-    listInstructions(),
+    listRevelations(),
     listAudioAssetsForExport(),
     listSavedSuggestionsForExport(),
     listAllTags(),
@@ -105,7 +107,7 @@ export async function listAllForExport(): Promise<LocalDataExport> {
       gratitudes: gratitudes.length,
       faithfulnessMoments: faithfulnessMoments.length,
       lessons: lessons.length,
-      instructions: instructions.length,
+      revelations: revelations.length,
       audioAssets: audioAssets.length,
       savedAiSuggestions: savedAiSuggestions.length,
       tags: tags.length,
@@ -115,7 +117,7 @@ export async function listAllForExport(): Promise<LocalDataExport> {
     gratitudes,
     faithfulnessMoments,
     lessons,
-    instructions,
+    revelations,
     audioAssets,
     savedAiSuggestions,
     tags,
@@ -131,8 +133,9 @@ export async function listAllForExport(): Promise<LocalDataExport> {
  * install ID) so the app feels fresh after a delete — each privacy notice will
  * show again the next time that action is used, and a new install ID is
  * generated on the next AI action. The schema and migration version are left
- * intact, so the app keeps working with empty states. This is a true delete
- * (not a soft delete) and cannot be undone.
+ * intact, so the app keeps working with empty states. Any previously exported
+ * JSON snapshot is also removed so plaintext content never survives a delete.
+ * This is a true delete (not a soft delete) and cannot be undone.
  */
 export async function deleteAllLocalData(): Promise<void> {
   const db = await getDatabase();
@@ -155,4 +158,5 @@ export async function deleteAllLocalData(): Promise<void> {
   });
 
   deleteAllLocalAudio();
+  deleteAllExports();
 }

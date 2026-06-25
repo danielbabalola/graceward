@@ -22,6 +22,7 @@ export function Screen({ title, subtitle, children, contentStyle }: ScreenProps)
       <ScrollView
         contentContainerStyle={[styles.content, contentStyle]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
           <Text style={styles.title} accessibilityRole="header">

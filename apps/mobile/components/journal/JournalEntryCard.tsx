@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import type { JournalEntry } from "@graceward/shared";
+import { PressableScale } from "@/components/ui/PressableScale";
 import {
   entryPreview,
   formatEntryDate,
@@ -31,14 +32,14 @@ export function JournalEntryCard({ entry, onPress }: JournalEntryCardProps) {
   }
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Open reflection: ${entryPreview(entry)}`}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={styles.card}
     >
       {content}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -51,9 +52,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
     ...shadows.card,
-  },
-  pressed: {
-    opacity: 0.92,
   },
   meta: {
     ...typography.caption,

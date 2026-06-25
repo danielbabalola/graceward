@@ -1,10 +1,10 @@
 import type { TaggableEntryType } from "@graceward/shared";
 import {
   getGratitudeById,
-  getInstructionById,
   getJournalEntryById,
   getLessonById,
   getPrayerRequestById,
+  getRevelationById,
   getWinById,
   listEntryRefsForTag,
 } from "@/lib/db";
@@ -24,6 +24,8 @@ const TYPE_LABELS: Record<TaggableEntryType, string> = {
   gratitude: "Gratitude",
   win: "Testimony",
   lesson: "Lesson",
+  dream: "Dream",
+  prophecy: "Prophecy",
   instruction: "Instruction",
   prayer_request: "Prayer",
   journal_entry: "Reflection",
@@ -34,7 +36,10 @@ export const ENTRY_ROUTES: Record<TaggableEntryType, string> = {
   gratitude: "/gratitude/[id]",
   win: "/win/[id]",
   lesson: "/lesson/[id]",
-  instruction: "/instruction/[id]",
+  // Dreams, prophecies, and instructions all live on the unified revelation route.
+  dream: "/revelation/[id]",
+  prophecy: "/revelation/[id]",
+  instruction: "/revelation/[id]",
   prayer_request: "/prayer/[id]",
   journal_entry: "/journal/[id]",
 };
@@ -56,8 +61,10 @@ async function resolveLabel(
       const row = await getLessonById(entryId);
       return row ? row.title : null;
     }
+    case "dream":
+    case "prophecy":
     case "instruction": {
-      const row = await getInstructionById(entryId);
+      const row = await getRevelationById(entryId);
       return row ? row.title : null;
     }
     case "prayer_request": {

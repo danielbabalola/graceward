@@ -1,8 +1,7 @@
 import { Share } from "react-native";
 import { Directory, File, Paths } from "expo-file-system";
 import { listAllForExport } from "@/lib/db";
-
-const EXPORT_DIRECTORY = "exports";
+import { EXPORT_DIRECTORY } from "@/lib/export-paths";
 
 export type ExportResult = "shared" | "dismissed";
 
@@ -17,15 +16,16 @@ export async function exportLocalData(): Promise<ExportResult> {
   const data = await listAllForExport();
   const json = JSON.stringify(data, null, 2);
 
+  // Recreate the directory fresh each time so old snapshots (which contain
+  // plaintext content) don't accumulate on the device — only the latest export
+  // is kept here until the user shares/saves it elsewhere.
   const dir = new Directory(Paths.document, EXPORT_DIRECTORY);
-  if (!dir.exists) {
-    dir.create();
+  if (dir.exists) {
+    dir.delete();
   }
+  dir.create();
 
   const file = new File(dir, `graceward-export-${Date.now()}.json`);
-  if (file.exists) {
-    file.delete();
-  }
   file.create();
   file.write(json);
 

@@ -10,7 +10,9 @@ import {
 import { router } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { AudioPlayback } from "@/components/journal/AudioPlayback";
+import { RecordingIndicator } from "@/components/reflection/RecordingIndicator";
 import { formatDuration } from "@/lib/journal-display";
+import { haptics } from "@/lib/haptics";
 import { useVoiceRecorder } from "@/lib/use-voice-recorder";
 import type { GuidedPromptMarker } from "@/lib/guided-payload";
 import type { GuidedModeConfig } from "@/lib/reflection-flow";
@@ -70,6 +72,7 @@ export function GuidedVoiceRecorder({
   const isLast = index === total - 1;
 
   async function handleStart() {
+    haptics.medium();
     const started = await recorder.start();
     if (started && prompts[0]) {
       setIndex(0);
@@ -122,6 +125,7 @@ export function GuidedVoiceRecorder({
         durationSeconds: previewSeconds,
         markers,
       });
+      haptics.success();
     } catch (error: unknown) {
       console.warn(
         "Failed to save guided voice reflection:",
@@ -174,7 +178,7 @@ export function GuidedVoiceRecorder({
     return (
       <View style={styles.card}>
         <Text style={styles.timer}>{formatDuration(elapsedSeconds)}</Text>
-        <Text style={styles.recordingLabel}>Recording…</Text>
+        <RecordingIndicator />
         <Text style={styles.progress}>
           Prompt {index + 1} of {total}
         </Text>
@@ -193,6 +197,7 @@ export function GuidedVoiceRecorder({
         <Button
           label="Stop"
           onPress={() => {
+            haptics.medium();
             void recorder.stop();
           }}
           style={styles.action}
@@ -328,11 +333,6 @@ const styles = StyleSheet.create({
   timer: {
     ...typography.screenTitle,
     color: colors.primaryDeep,
-    textAlign: "center",
-  },
-  recordingLabel: {
-    ...typography.body,
-    color: colors.correctionAccent,
     textAlign: "center",
   },
   action: {

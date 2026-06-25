@@ -13,6 +13,7 @@ import type {
 } from "@graceward/ai-schemas";
 import { Button } from "@/components/ui/Button";
 import { AudioPlayback } from "@/components/journal/AudioPlayback";
+import { RecordingIndicator } from "@/components/reflection/RecordingIndicator";
 import {
   structureVoiceEntry,
   VoiceEntryApiError,
@@ -22,6 +23,7 @@ import {
   hasAcknowledgedVoiceEntryConsent,
 } from "@/lib/db";
 import { formatDuration } from "@/lib/journal-display";
+import { haptics } from "@/lib/haptics";
 import { useVoiceRecorder } from "@/lib/use-voice-recorder";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
@@ -48,6 +50,8 @@ const NOUNS: Record<VoiceEntryType, string> = {
   gratitude: "gratitude",
   faithfulness: "testimony",
   lesson: "lesson",
+  dream: "dream",
+  prophecy: "prophecy",
   instruction: "instruction",
 };
 
@@ -312,7 +316,7 @@ export function VoiceEntryCapture({
       <View style={styles.wrapper}>
         <View style={styles.card}>
           <Text style={styles.timer}>{formatDuration(elapsedSeconds)}</Text>
-          <Text style={styles.recordingLabel}>Recording…</Text>
+          <RecordingIndicator />
           <Text style={styles.hint}>
             Speak naturally — say what you&apos;d like, and Graceward will
             organize it. Up to 15 minutes.
@@ -320,6 +324,7 @@ export function VoiceEntryCapture({
           <Button
             label="Stop"
             onPress={() => {
+              haptics.medium();
               void recorder.stop();
             }}
             style={styles.action}
@@ -403,6 +408,7 @@ export function VoiceEntryCapture({
         <Button
           label="Start recording"
           onPress={() => {
+            haptics.medium();
             void recorder.start();
           }}
           style={styles.action}
@@ -455,11 +461,6 @@ const styles = StyleSheet.create({
   timer: {
     ...typography.screenTitle,
     color: colors.primaryDeep,
-    textAlign: "center",
-  },
-  recordingLabel: {
-    ...typography.body,
-    color: colors.correctionAccent,
     textAlign: "center",
   },
   action: {

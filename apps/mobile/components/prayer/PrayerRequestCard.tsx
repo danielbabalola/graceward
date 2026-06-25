@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import type { PrayerRequest } from "@graceward/shared";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { prayerMetaLine, prayerPreview } from "@/lib/prayer-display";
 import { colors, radii, shadows, spacing, typography } from "@/theme/tokens";
 
@@ -34,18 +35,14 @@ export function PrayerRequestCard({ request, onPress }: PrayerRequestCardProps) 
   }
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Open prayer request: ${request.title}`}
-      style={({ pressed }) => [
-        styles.card,
-        answered && styles.cardAnswered,
-        pressed && styles.pressed,
-      ]}
+      style={[styles.card, answered && styles.cardAnswered]}
     >
       {content}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -61,9 +58,6 @@ const styles = StyleSheet.create({
   },
   cardAnswered: {
     borderColor: colors.answeredPrayerAccent,
-  },
-  pressed: {
-    opacity: 0.92,
   },
   meta: {
     ...typography.caption,

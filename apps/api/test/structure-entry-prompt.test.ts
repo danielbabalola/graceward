@@ -84,6 +84,22 @@ describe("buildStructureSystemPrompt", () => {
     expect(instruction).toContain("NEVER claim to speak for God");
     expect(instruction.toLowerCase()).toContain("their own words");
   });
+
+  it("records a dream without interpreting it", () => {
+    const dream = buildStructureSystemPrompt("dream");
+    expect(dream).toContain("DREAM");
+    expect(dream.toLowerCase()).toContain("never interpret");
+    expect(dream).not.toContain("Follow-up dates");
+    expect(dream).not.toContain('"dueAt"');
+  });
+
+  it("records a prophetic word without validating or interpreting it", () => {
+    const prophecy = buildStructureSystemPrompt("prophecy");
+    expect(prophecy).toContain("PROPHETIC WORD");
+    expect(prophecy).toContain("NEVER claim to speak for God");
+    expect(prophecy).not.toContain("Follow-up dates");
+    expect(prophecy).not.toContain('"dueAt"');
+  });
 });
 
 describe("buildStructureUserPrompt", () => {

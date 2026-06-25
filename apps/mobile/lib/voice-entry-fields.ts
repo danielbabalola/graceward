@@ -1,3 +1,4 @@
+import type { StructureTextEntryResponse } from "@graceward/ai-schemas";
 import { toLocalDateString } from "@/lib/db/helpers";
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
@@ -30,6 +31,29 @@ export function suggestionTags(fields: {
   }
   const legacy = fields.category ?? fields.theme ?? fields.faithfulnessTheme;
   return legacy ? [legacy] : [];
+}
+
+/**
+ * Merges newly suggested tag names into an existing list without duplicating.
+ * Existing tags (and their order) are kept first; suggested ones are appended
+ * only when not already present, compared case-insensitively on the trimmed
+ * name. Used when applying AI-suggested tags so a user's own tags are never
+ * dropped — matching the "Add" affordance shown for the suggestion.
+ */
+export function mergeTagNames(
+  existing: string[],
+  added: string[],
+): string[] {
+  const result = [...existing];
+  const seen = new Set(existing.map((tag) => tag.trim().toLowerCase()));
+  for (const tag of added) {
+    const key = tag.trim().toLowerCase();
+    if (key.length > 0 && !seen.has(key)) {
+      seen.add(key);
+      result.push(tag);
+    }
+  }
+  return result;
 }
 
 /** True when `dateString` is a real calendar date (rejects e.g. 2026-02-31). */
@@ -68,4 +92,69 @@ export function safeFollowUpDate(
     return null;
   }
   return raw;
+}
+
+/**
+ * A polish result normalized into the pieces a form can apply independently.
+ * Each field is what Graceward suggested for one part of the entry; `null` means
+ * there is nothing to offer for that part (e.g. gratitude has no title, a prayer
+ * with no description, or no safe date was stated). The user chooses which of
+ * these to apply, so their own words are never overwritten wholesale.
+ */
+export type PolishApplicableFields = {
+  /** Suggested title/name, or null for entry types without a title field. */
+  title: string | null;
+  /** Suggested tidied content/details, or null when none was produced. */
+  content: string | null;
+  /** Suggested tags (may be empty). */
+  tags: string[];
+  /**
+   * A safe, non-past suggested date (a prayer follow-up or an instruction's
+   * "by when"), already validated by {@link safeFollowUpDate}; null otherwise.
+   */
+  date: string | null;
+};
+
+/**
+ * Normalizes a "Polish with AI" result into the discrete pieces a create form
+ * can apply one at a time. The per-type field differences (prayer's
+ * description/follow-up, instruction's due date, the title-less gratitude and
+ * faithfulness shapes) are resolved here so the UI stays generic. Any suggested
+ * date is passed through {@link safeFollowUpDate} so an inferred or past date is
+ * never surfaced.
+ */
+export function polishApplicableFields(
+  result: StructureTextEntryResponse,
+): PolishApplicableFields {
+  const tags = suggestionTags(result.fields);
+  switch (result.entryType) {
+    case "prayer": {
+      const description = (result.fields.description ?? "").trim();
+      return {
+        title: result.fields.title,
+        content: description.length > 0 ? description : null,
+        tags,
+        date: safeFollowUpDate(result.fields.followUpAt),
+      };
+    }
+    case "gratitude":
+    case "faithfulness":
+      return { title: null, content: result.fields.content, tags, date: null };
+    case "lesson":
+    case "dream":
+    case "prophecy":
+      return {
+        title: result.fields.title,
+        content: result.fields.content,
+        tags,
+        date: null,
+      };
+    case "instruction":
+      return {
+        title: result.fields.title,
+        content: result.fields.content,
+        tags,
+        date: safeFollowUpDate(result.fields.dueAt),
+      };
+  }
 }

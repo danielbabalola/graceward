@@ -18,6 +18,7 @@ type WinRow = {
   journal_entry_id: string | null;
   content: string;
   faithfulness_theme: string | null;
+  occurred_at: string | null;
   sync_status: string;
   created_at: string;
   updated_at: string;
@@ -30,6 +31,7 @@ function mapRow(row: WinRow): Win {
     journalEntryId: row.journal_entry_id,
     content: row.content,
     faithfulnessTheme: row.faithfulness_theme,
+    occurredAt: row.occurred_at,
     syncStatus: row.sync_status as Win["syncStatus"],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -47,6 +49,7 @@ export async function createWin(input: CreateWinInput): Promise<Win> {
     content: input.content,
     // Legacy column is no longer written; tags are the source of truth.
     faithfulnessTheme: null,
+    occurredAt: input.occurredAt ?? null,
     syncStatus: input.syncStatus ?? "local_only",
     createdAt: nowIso,
     updatedAt: nowIso,
@@ -55,14 +58,15 @@ export async function createWin(input: CreateWinInput): Promise<Win> {
 
   await db.runAsync(
     `INSERT INTO wins (
-      id, journal_entry_id, content, faithfulness_theme, sync_status,
-      created_at, updated_at, deleted_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      id, journal_entry_id, content, faithfulness_theme, occurred_at,
+      sync_status, created_at, updated_at, deleted_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       win.id,
       win.journalEntryId,
       win.content,
       win.faithfulnessTheme,
+      win.occurredAt,
       win.syncStatus,
       win.createdAt,
       win.updatedAt,
@@ -148,6 +152,10 @@ export async function updateWin(
   if (input.content !== undefined) {
     sets.push("content = ?");
     values.push(input.content);
+  }
+  if (input.occurredAt !== undefined) {
+    sets.push("occurred_at = ?");
+    values.push(input.occurredAt);
   }
 
   sets.push("updated_at = ?");

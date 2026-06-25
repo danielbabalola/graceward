@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { StyleSheet, View } from "react-native";
+import { haptics } from "@/lib/haptics";
 import { colors, shadows, typography } from "@/theme/tokens";
 
 type TabIconName = keyof typeof Ionicons.glyphMap;
@@ -27,6 +28,9 @@ function CenterTabIcon({ focused }: { focused: boolean }) {
 export default function TabLayout() {
   return (
     <Tabs
+      screenListeners={{
+        tabPress: () => haptics.selection(),
+      }}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primaryDeep,
@@ -107,10 +111,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 4,
     borderColor: colors.backgroundCream,
-    ...shadows.card,
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    elevation: 6,
+    ...shadows.high,
   },
   centerButtonFocused: {
     backgroundColor: colors.accentGold,

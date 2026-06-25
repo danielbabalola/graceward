@@ -1,5 +1,5 @@
 /**
- * The Remember tab (`/(tabs)/gratitude`) hosts four segments. These live on a
+ * The Remember tab (`/(tabs)/gratitude`) hosts five segments. These live on a
  * single screen via a segmented control; the selected segment can be driven by
  * a `segment` search param so create screens can return the user to the right
  * place after saving.
@@ -8,6 +8,7 @@ export type RememberSegment =
   | "gratitudes"
   | "faithfulness"
   | "lessons"
+  | "revelations"
   | "instructions";
 
 /** Default segment when no (or an invalid) param is present. */
@@ -15,8 +16,9 @@ export const DEFAULT_REMEMBER_SEGMENT: RememberSegment = "gratitudes";
 
 /**
  * Parse a `segment` search param into a valid {@link RememberSegment}. Accepts
- * both "gratitude" and "gratitudes" for the gratitude segment so callers can use
- * the natural singular in URLs. Anything unrecognized (including undefined or an
+ * both "gratitude" and "gratitudes" for the gratitude segment, and the singular
+ * "revelation"/"instruction" forms for their segments, so callers can use the
+ * natural singular in URLs. Anything unrecognized (including undefined or an
  * array) falls back calmly to the default segment.
  */
 export function parseRememberSegment(
@@ -31,6 +33,9 @@ export function parseRememberSegment(
       return "faithfulness";
     case "lessons":
       return "lessons";
+    case "revelation":
+    case "revelations":
+      return "revelations";
     case "instruction":
     case "instructions":
       return "instructions";

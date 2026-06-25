@@ -179,9 +179,14 @@ export default function JournalEntryDetailScreen() {
       title: deriveTitleFromTextPayload(nextPayload, config.fallbackTitle),
       structuredPayloadJson: JSON.stringify(nextPayload),
     });
-    if (updated) {
-      setEntry(updated);
+    // A null result means the entry could no longer be found/updated. Throw so
+    // the editor surfaces a calm error and stays open instead of silently
+    // closing and dropping the user's edits. (Thrown DB errors propagate the
+    // same way and are handled by GuidedPromptEditor's save handler.)
+    if (!updated) {
+      throw new Error("JOURNAL_UPDATE_FAILED");
     }
+    setEntry(updated);
     setStructuredEditing(false);
   }
 
@@ -212,7 +217,7 @@ export default function JournalEntryDetailScreen() {
     setDeleting(true);
     try {
       await softDeleteJournalEntry(entry.id);
-      router.back();
+      router.replace("/(tabs)/journal");
     } catch (error: unknown) {
       console.warn(
         "Failed to delete reflection:",

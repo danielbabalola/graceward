@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { Screen } from "@/components/ui/Screen";
@@ -7,7 +7,8 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { GratitudeList } from "@/components/gratitude/GratitudeList";
 import { FaithfulnessView } from "@/components/gratitude/FaithfulnessView";
 import { LessonsList } from "@/components/lessons/LessonsList";
-import { InstructionsList } from "@/components/instructions/InstructionsList";
+import { RevelationsList } from "@/components/revelations/RevelationsList";
+import { InstructionsList } from "@/components/revelations/InstructionsList";
 import {
   DEFAULT_REMEMBER_SEGMENT,
   parseRememberSegment,
@@ -19,8 +20,33 @@ const tabOptions: { value: RememberSegment; label: string }[] = [
   { value: "gratitudes", label: "Gratitude" },
   { value: "faithfulness", label: "Testimonies" },
   { value: "lessons", label: "Lessons" },
+  { value: "revelations", label: "Revelations" },
   { value: "instructions", label: "Instructions" },
 ];
+
+/**
+ * Asks which kind of revelation to add, then opens the right create screen.
+ * Revelations are the reflective kinds (a dream or a prophetic word);
+ * instructions have their own segment and "Add instruction" button.
+ */
+function promptAddRevelation() {
+  Alert.alert("Add a revelation", "What would you like to record?", [
+    {
+      text: "Dream",
+      onPress: () =>
+        router.push({ pathname: "/revelation/new", params: { kind: "dream" } }),
+    },
+    {
+      text: "Prophecy",
+      onPress: () =>
+        router.push({
+          pathname: "/revelation/new",
+          params: { kind: "prophecy" },
+        }),
+    },
+    { text: "Cancel", style: "cancel" },
+  ]);
+}
 
 export default function RememberScreen() {
   const params = useLocalSearchParams<{ segment?: string }>();
@@ -71,17 +97,32 @@ export default function RememberScreen() {
           <Button label="Save a lesson" onPress={() => router.push("/lesson/new")} />
         </View>
       ) : null}
+      {tab === "revelations" ? (
+        <View style={styles.addButton}>
+          <Button label="Add revelation" onPress={promptAddRevelation} />
+        </View>
+      ) : null}
       {tab === "instructions" ? (
         <View style={styles.addButton}>
           <Button
             label="Add instruction"
-            onPress={() => router.push("/instruction/new")}
+            onPress={() =>
+              router.push({
+                pathname: "/revelation/new",
+                params: { kind: "instruction" },
+              })
+            }
           />
         </View>
       ) : null}
 
       <View style={styles.switcher}>
-        <SegmentedControl options={tabOptions} value={tab} onChange={setTab} />
+        <SegmentedControl
+          options={tabOptions}
+          value={tab}
+          onChange={setTab}
+          scrollable
+        />
       </View>
 
       <View style={styles.browseTags}>
@@ -95,6 +136,7 @@ export default function RememberScreen() {
       {tab === "gratitudes" ? <GratitudeList /> : null}
       {tab === "faithfulness" ? <FaithfulnessView /> : null}
       {tab === "lessons" ? <LessonsList /> : null}
+      {tab === "revelations" ? <RevelationsList /> : null}
       {tab === "instructions" ? <InstructionsList /> : null}
     </Screen>
   );

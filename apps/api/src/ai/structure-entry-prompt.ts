@@ -86,6 +86,20 @@ ${TAGS_RULE}`,
   "tags"?: [string]   // see tags rule below
 }
 ${TAGS_RULE}`,
+  dream: `This entry is a DREAM the user wants to record. Your only job is to tidy their own account into the fields — never interpret the dream, assign it meaning, say what it signifies, or claim God said anything through it. Keep it firmly in the user's own words and first person. Return ONLY a single JSON object (no markdown, no commentary) with exactly these keys:
+{
+  "title": string,    // a short phrase naming the dream, in their words
+  "content": string,  // their account of the dream, lightly cleaned
+  "tags"?: [string]   // see tags rule below
+}
+${TAGS_RULE}`,
+  prophecy: `This entry is a PROPHETIC WORD the user senses they have received and wants to record. Your only job is to tidy what they said into the fields — never validate or invalidate it, embellish it, interpret it, or claim that you are speaking for God. Keep it firmly in the user's own words. Return ONLY a single JSON object (no markdown, no commentary) with exactly these keys:
+{
+  "title": string,    // a short phrase naming the word, in their words
+  "content": string,  // the word as they expressed it, lightly cleaned
+  "tags"?: [string]   // see tags rule below
+}
+${TAGS_RULE}`,
   instruction: `This entry is an INSTRUCTION — something the user has said they believe God is asking, leading, or calling THEM to do. The user has chosen to record this themselves; your only job is to transcribe and tidy their own words into the fields, never to originate, judge, strengthen, or soften the instruction. Keep it firmly in the user's own voice ("I sense I'm being asked to…"); do NOT add "God told you", "God wants you to", or any claim that you are speaking for God. Return ONLY a single JSON object (no markdown, no commentary) with exactly these keys:
 {
   "title": string,         // a short phrase naming what they sense they're being asked to do, in their words

@@ -1,10 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import type { Lesson, Tag } from "@graceward/shared";
 import { Card } from "@/components/ui/Card";
 import { Section } from "@/components/ui/Section";
 import { ItemCard } from "@/components/gratitude/ItemCard";
+import { AppearingView } from "@/components/ui/AppearingView";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { TagFilterBar } from "@/components/tags/TagFilterBar";
 import { collectDistinctTags } from "@/lib/tag-display";
 import { listLessonsByStatus, listTagsForEntries } from "@/lib/db";
@@ -83,11 +86,7 @@ export function LessonsList() {
   );
 
   if (loadState === "loading") {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={colors.primaryDeep} />
-      </View>
-    );
+    return <ListSkeleton />;
   }
 
   if (loadState === "error") {
@@ -104,8 +103,8 @@ export function LessonsList() {
     return (
       <View style={styles.container}>
         <Text style={styles.explanation}>{EXPLANATION}</Text>
-        <Card
-          variant="subtle"
+        <EmptyState
+          icon="school-outline"
           title="Lessons you save will appear here."
           description="Notice what God may be forming in you over time."
         />
@@ -124,41 +123,43 @@ export function LessonsList() {
       />
 
       {visibleActive.length > 0 ? (
-        <Section title="What I'm learning">
-          {visibleActive.map((lesson) => (
-            <ItemCard
-              key={lesson.id}
-              meta={lessonMetaLine(lesson)}
-              content={lesson.title}
-              tags={tagMap.get(lesson.id)}
-              accessibilityLabel={`Open lesson: ${lesson.title}`}
-              onPress={() =>
-                router.push({
-                  pathname: "/lesson/[id]",
-                  params: { id: lesson.id },
-                })
-              }
-            />
+        <Section title="What I'm learning" icon="school-outline">
+          {visibleActive.map((lesson, i) => (
+            <AppearingView key={lesson.id} index={i}>
+              <ItemCard
+                meta={lessonMetaLine(lesson)}
+                content={lesson.title}
+                tags={tagMap.get(lesson.id)}
+                accessibilityLabel={`Open lesson: ${lesson.title}`}
+                onPress={() =>
+                  router.push({
+                    pathname: "/lesson/[id]",
+                    params: { id: lesson.id },
+                  })
+                }
+              />
+            </AppearingView>
           ))}
         </Section>
       ) : null}
 
       {visibleArchived.length > 0 ? (
-        <Section title="Archived">
-          {visibleArchived.map((lesson) => (
-            <ItemCard
-              key={lesson.id}
-              meta={lessonMetaLine(lesson)}
-              content={contentPreview(lesson.title)}
-              tags={tagMap.get(lesson.id)}
-              accessibilityLabel={`Open archived lesson: ${lesson.title}`}
-              onPress={() =>
-                router.push({
-                  pathname: "/lesson/[id]",
-                  params: { id: lesson.id },
-                })
-              }
-            />
+        <Section title="Archived" icon="archive-outline">
+          {visibleArchived.map((lesson, i) => (
+            <AppearingView key={lesson.id} index={i}>
+              <ItemCard
+                meta={lessonMetaLine(lesson)}
+                content={contentPreview(lesson.title)}
+                tags={tagMap.get(lesson.id)}
+                accessibilityLabel={`Open archived lesson: ${lesson.title}`}
+                onPress={() =>
+                  router.push({
+                    pathname: "/lesson/[id]",
+                    params: { id: lesson.id },
+                  })
+                }
+              />
+            </AppearingView>
           ))}
         </Section>
       ) : null}
@@ -167,10 +168,6 @@ export function LessonsList() {
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    paddingVertical: spacing.xxl,
-    alignItems: "center",
-  },
   container: {
     gap: spacing.sm,
   },

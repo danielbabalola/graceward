@@ -5,6 +5,7 @@ import type { HealthResponse } from "@graceward/shared";
 import { registerAnalyzeReflectionRoute } from "./routes/analyze-reflection.js";
 import { registerTranscribeReflectionRoute } from "./routes/transcribe-reflection.js";
 import { registerStructureVoiceEntryRoute } from "./routes/structure-voice-entry.js";
+import { registerStructureTextEntryRoute } from "./routes/structure-text-entry.js";
 import { createQuotaService, resolveQuotaConfig } from "./ai/quota.js";
 import {
   createInMemoryQuotaStore,
@@ -64,6 +65,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   registerAnalyzeReflectionRoute(app, quota);
   registerTranscribeReflectionRoute(app, quota);
   registerStructureVoiceEntryRoute(app, quota);
+  registerStructureTextEntryRoute(app, quota);
 
   return app;
 }

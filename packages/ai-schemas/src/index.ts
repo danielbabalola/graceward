@@ -145,6 +145,31 @@ export const instructionSuggestionSchema = z.object({
 });
 export type InstructionSuggestion = z.infer<typeof instructionSuggestionSchema>;
 
+/**
+ * A dream the user wants to record, kept faithfully in their own words. The AI
+ * only tidies what they said into a short title and their account — it never
+ * interprets the dream, assigns meaning, or claims to speak for God.
+ */
+export const dreamSuggestionSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+  tags: tagsSchema,
+});
+export type DreamSuggestion = z.infer<typeof dreamSuggestionSchema>;
+
+/**
+ * A prophetic word the user senses they have received, recorded faithfully in
+ * their own words. The AI only tidies what they said into a short title and the
+ * word itself — it never validates, embellishes, interprets, or claims to speak
+ * for God.
+ */
+export const prophecySuggestionSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+  tags: tagsSchema,
+});
+export type ProphecySuggestion = z.infer<typeof prophecySuggestionSchema>;
+
 export const analyzeReflectionResponseSchema = z.object({
   pastoralReflection: z.string().min(1),
   prayerSuggestions: z.array(prayerSuggestionSchema).default([]),
@@ -286,24 +311,35 @@ export const STRUCTURE_ENTRY_PROMPT_VERSION = "structure-entry-v3";
 export const MAX_VOICE_ENTRY_TRANSCRIPT_CHARS = 8000;
 
 /**
- * Entry types that can be created by voice and structured by the AI. These map
- * 1:1 to the manual create screens (prayer, gratitude, faithfulness, lesson,
- * instruction). "faithfulness" is the user-facing name for the internal "wins"
- * type. For "instruction" the AI only transcribes and formats the user's own
- * spoken words — it never originates or asserts an instruction from God.
+ * Entry types that can be structured by the AI (from a spoken note or from
+ * typed text the user asks to polish). These map 1:1 to the manual create
+ * screens (prayer, gratitude, faithfulness, lesson, and the three revelation
+ * kinds: dream, prophecy, instruction). "faithfulness" is the user-facing name
+ * for the internal "wins" type. For the revelation kinds the AI only
+ * transcribes/tidies the user's own words — it never originates, interprets, or
+ * asserts anything from God.
  */
 export const voiceEntryTypeSchema = z.enum([
   "prayer",
   "gratitude",
   "faithfulness",
   "lesson",
+  "dream",
+  "prophecy",
   "instruction",
 ]);
 export type VoiceEntryType = z.infer<typeof voiceEntryTypeSchema>;
 
 /**
- * Per-type field schemas the AI must produce when structuring a spoken note.
- * Reuses the existing suggestion shapes so a voice-created entry matches a
+ * Alias for the entry types the AI can structure, used by the typed-text
+ * polishing endpoint. Same set as {@link voiceEntryTypeSchema}.
+ */
+export const structurableEntryTypeSchema = voiceEntryTypeSchema;
+export type StructurableEntryType = VoiceEntryType;
+
+/**
+ * Per-type field schemas the AI must produce when structuring a note. Reuses
+ * the existing suggestion shapes so a structured entry matches a
  * journal-suggested one exactly (same fields, same optionality).
  */
 export const voiceEntryFieldSchemas = {
@@ -311,6 +347,8 @@ export const voiceEntryFieldSchemas = {
   gratitude: gratitudeSuggestionSchema,
   faithfulness: faithfulnessMomentSuggestionSchema,
   lesson: lessonSuggestionSchema,
+  dream: dreamSuggestionSchema,
+  prophecy: prophecySuggestionSchema,
   instruction: instructionSuggestionSchema,
 } as const;
 
@@ -357,6 +395,16 @@ export const structureVoiceEntryResponseSchema = z.discriminatedUnion(
       fields: lessonSuggestionSchema,
     }),
     z.object({
+      entryType: z.literal("dream"),
+      transcript: z.string().min(1),
+      fields: dreamSuggestionSchema,
+    }),
+    z.object({
+      entryType: z.literal("prophecy"),
+      transcript: z.string().min(1),
+      fields: prophecySuggestionSchema,
+    }),
+    z.object({
       entryType: z.literal("instruction"),
       transcript: z.string().min(1),
       fields: instructionSuggestionSchema,
@@ -365,4 +413,62 @@ export const structureVoiceEntryResponseSchema = z.discriminatedUnion(
 );
 export type StructureVoiceEntryResponse = z.infer<
   typeof structureVoiceEntryResponseSchema
+>;
+
+/* -------------------------------------------------------------------------- */
+/* Typed-text entry structuring ("Polish with AI")                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Defensive upper bound on the typed text the server will polish into one
+ * entry's fields. Matches the spoken-note bound so both paths share a limit.
+ */
+export const MAX_TEXT_ENTRY_CHARS = MAX_VOICE_ENTRY_TRANSCRIPT_CHARS;
+
+/**
+ * JSON body for POST /ai/structure-text-entry. The user has typed a rough note
+ * and asked Graceward to clean it up and suggest a title/tags. The entry date
+ * lets the model resolve any stated follow-up/by-when time (prayer/instruction).
+ */
+export const structureTextEntryRequestSchema = z.object({
+  entryType: structurableEntryTypeSchema,
+  entryDate: z.string().min(1),
+  text: z.string().trim().min(1).max(MAX_TEXT_ENTRY_CHARS),
+});
+export type StructureTextEntryRequest = z.infer<
+  typeof structureTextEntryRequestSchema
+>;
+
+/**
+ * Structured success body returned by POST /ai/structure-text-entry. A
+ * discriminated union on `entryType` so `fields` is precisely the requested
+ * entry type's shape. Unlike the voice variant there is no transcript — the
+ * user's own typed text was the input and is already on screen.
+ */
+export const structureTextEntryResponseSchema = z.discriminatedUnion(
+  "entryType",
+  [
+    z.object({ entryType: z.literal("prayer"), fields: prayerSuggestionSchema }),
+    z.object({
+      entryType: z.literal("gratitude"),
+      fields: gratitudeSuggestionSchema,
+    }),
+    z.object({
+      entryType: z.literal("faithfulness"),
+      fields: faithfulnessMomentSuggestionSchema,
+    }),
+    z.object({ entryType: z.literal("lesson"), fields: lessonSuggestionSchema }),
+    z.object({ entryType: z.literal("dream"), fields: dreamSuggestionSchema }),
+    z.object({
+      entryType: z.literal("prophecy"),
+      fields: prophecySuggestionSchema,
+    }),
+    z.object({
+      entryType: z.literal("instruction"),
+      fields: instructionSuggestionSchema,
+    }),
+  ],
+);
+export type StructureTextEntryResponse = z.infer<
+  typeof structureTextEntryResponseSchema
 >;

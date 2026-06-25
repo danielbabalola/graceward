@@ -11,8 +11,10 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import type { StructureVoiceEntryResponse } from "@graceward/ai-schemas";
 import { Button } from "@/components/ui/Button";
+import { DateSelector } from "@/components/ui/DateSelector";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
+import { PolishWithAi } from "@/components/entry/PolishWithAi";
 import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
 import { TagEditor } from "@/components/tags/TagEditor";
 import { createWin, toLocalDateString } from "@/lib/db";
@@ -26,6 +28,9 @@ export default function NewWinScreen() {
   }>();
   const [content, setContent] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [occurredAt, setOccurredAt] = useState<string | null>(
+    toLocalDateString(new Date()),
+  );
   const [saving, setSaving] = useState(false);
 
   const canSave = content.trim().length > 0 && !saving;
@@ -50,6 +55,7 @@ export default function NewWinScreen() {
       await createWin({
         content: content.trim(),
         tags,
+        occurredAt,
         journalEntryId: sourceJournalEntryId ?? null,
         syncStatus: "local_only",
       });
@@ -94,13 +100,24 @@ export default function NewWinScreen() {
           hasExistingInput={hasTypedEntryContent([content]) || tags.length > 0}
         />
 
+        <PolishWithAi
+          entryType="faithfulness"
+          entryDate={toLocalDateString(new Date())}
+          getText={() => content}
+          disabled={saving}
+          onApplyContent={setContent}
+          onApplyTags={setTags}
+          getCurrentValues={() => ({ content, tags })}
+          contentNoun="testimony"
+        />
+
         <View style={styles.field}>
           <Text style={styles.label}>Where did you see God's goodness?</Text>
           <View style={styles.inputWrapper}>
             <TextInput
               value={content}
               onChangeText={setContent}
-              placeholder="Something that went well, or a way God showed up…"
+              placeholder="A way God showed up — His provision, deliverance, or faithfulness…"
               placeholderTextColor={colors.textSubtle}
               multiline
               autoFocus
@@ -118,6 +135,16 @@ export default function NewWinScreen() {
             placeholder="e.g. Provision, Healing, Perseverance"
           />
         </View>
+
+        <DateSelector
+          label="When this happened (optional)"
+          value={occurredAt}
+          onChange={setOccurredAt}
+          maxDate={toLocalDateString(new Date())}
+          allowClear
+          emptyLabel="No date"
+          hint="The day God showed up. Today or a past day."
+        />
 
         <Text style={styles.hint}>Saved privately on this device only.</Text>
         <Button

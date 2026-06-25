@@ -15,6 +15,8 @@ describe("voiceEntryTypeSchema", () => {
       "gratitude",
       "faithfulness",
       "lesson",
+      "dream",
+      "prophecy",
       "instruction",
     ]) {
       expect(voiceEntryTypeSchema.safeParse(type).success).toBe(true);
@@ -66,11 +68,13 @@ describe("structureVoiceEntryMetadataSchema", () => {
 describe("voiceEntryFieldSchemas", () => {
   it("maps each entry type to a field schema", () => {
     expect(Object.keys(voiceEntryFieldSchemas).sort()).toEqual([
+      "dream",
       "faithfulness",
       "gratitude",
       "instruction",
       "lesson",
       "prayer",
+      "prophecy",
     ]);
   });
 
@@ -170,6 +174,40 @@ describe("structureVoiceEntryResponseSchema", () => {
         },
       }).success,
     ).toBe(true);
+  });
+
+  it("parses dream and prophecy results", () => {
+    expect(
+      structureVoiceEntryResponseSchema.safeParse({
+        entryType: "dream",
+        transcript: "I dreamt I was walking by the sea.",
+        fields: {
+          title: "Walking by the sea",
+          content: "I was walking by the sea and felt peace.",
+          tags: ["Peace"],
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      structureVoiceEntryResponseSchema.safeParse({
+        entryType: "prophecy",
+        transcript: "A word about a new season.",
+        fields: {
+          title: "A new season",
+          content: "I sensed a word about a new season coming.",
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a dream missing its content", () => {
+    expect(
+      structureVoiceEntryResponseSchema.safeParse({
+        entryType: "dream",
+        transcript: "A short dream.",
+        fields: { title: "A short dream" },
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects an empty transcript", () => {

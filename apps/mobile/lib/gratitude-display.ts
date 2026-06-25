@@ -1,7 +1,11 @@
 import type { Gratitude, Win } from "@graceward/shared";
 
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
 export function formatItemDate(value: string): string {
-  const parsed = new Date(value);
+  // Date-only values (e.g. a user-set "occurred" day) must be parsed as local
+  // midnight, not UTC, or they can render as the previous day in western zones.
+  const parsed = new Date(DATE_ONLY.test(value) ? `${value}T00:00:00` : value);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
@@ -34,7 +38,11 @@ export function gratitudeMetaLine(gratitude: Gratitude): string {
   return formatItemDate(gratitude.createdAt);
 }
 
-/** Meta line for a faithfulness moment card (date only; tags shown as chips). */
+/**
+ * Meta line for a faithfulness moment card (date only; tags shown as chips).
+ * Prefers the user-set "when it happened" day, falling back to when it was
+ * recorded.
+ */
 export function winMetaLine(win: Win): string {
-  return formatItemDate(win.createdAt);
+  return formatItemDate(win.occurredAt ?? win.createdAt);
 }

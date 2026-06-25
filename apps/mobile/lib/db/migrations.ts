@@ -383,6 +383,36 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 13,
+    up: async (db) => {
+      // Generalizes the instructions table into the "Revelations" family —
+      // things received or perceived from God (dreams, prophecies, and
+      // instructions). The table keeps its physical name; a `kind` discriminator
+      // distinguishes the three. Existing rows are all instructions, so the
+      // column defaults to 'instruction' and backfills them in place. `due_at`
+      // stays meaningful only for the instruction kind.
+      await db.execAsync(`
+        ALTER TABLE instructions ADD COLUMN kind TEXT NOT NULL DEFAULT 'instruction';
+        CREATE INDEX IF NOT EXISTS idx_instructions_kind
+          ON instructions (kind);
+      `);
+    },
+  },
+  {
+    version: 14,
+    up: async (db) => {
+      // Optional "when it happened" date (YYYY-MM-DD) the user can set for the
+      // reflective revelation kinds (the day a dream was had or a word received)
+      // and for testimonies (the day a faithfulness moment occurred). Distinct
+      // from created_at (when it was recorded); existing rows keep NULL and fall
+      // back to their record date in the UI. Instructions keep using due_at.
+      await db.execAsync(`
+        ALTER TABLE instructions ADD COLUMN occurred_at TEXT;
+        ALTER TABLE wins ADD COLUMN occurred_at TEXT;
+      `);
+    },
+  },
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {

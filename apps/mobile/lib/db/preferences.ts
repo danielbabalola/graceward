@@ -10,6 +10,7 @@ type PreferenceKey =
   | "aiReflectionConsentAcknowledged"
   | "voiceTranscriptionConsentAcknowledged"
   | "voiceEntryConsentAcknowledged"
+  | "aiTextPolishConsentAcknowledged"
   | "aiInstallId";
 
 type PreferenceRow = {
@@ -104,6 +105,29 @@ export async function acknowledgeVoiceEntryConsent(): Promise<void> {
 /** Clears the acknowledgement so the voice-entry notice shows again. */
 export async function resetVoiceEntryConsent(): Promise<void> {
   await clearPreference(VOICE_ENTRY_CONSENT_KEY);
+}
+
+const AI_TEXT_POLISH_CONSENT_KEY: PreferenceKey =
+  "aiTextPolishConsentAcknowledged";
+
+/**
+ * True once the user has acknowledged the "Polish with AI" privacy notice
+ * (sending the text they typed to Graceward to clean it up and suggest a
+ * title/tags). Tracked separately from the voice-entry consent because no
+ * recording is involved — only the typed text is sent.
+ */
+export async function hasAcknowledgedAiTextPolishConsent(): Promise<boolean> {
+  return (await getPreference(AI_TEXT_POLISH_CONSENT_KEY)) === "true";
+}
+
+/** Records that the user acknowledged the "Polish with AI" privacy notice. */
+export async function acknowledgeAiTextPolishConsent(): Promise<void> {
+  await setPreference(AI_TEXT_POLISH_CONSENT_KEY, "true");
+}
+
+/** Clears the acknowledgement so the polish notice shows again. */
+export async function resetAiTextPolishConsent(): Promise<void> {
+  await clearPreference(AI_TEXT_POLISH_CONSENT_KEY);
 }
 
 const AI_INSTALL_ID_KEY: PreferenceKey = "aiInstallId";

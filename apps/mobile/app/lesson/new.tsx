@@ -13,6 +13,7 @@ import type { StructureVoiceEntryResponse } from "@graceward/ai-schemas";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
+import { PolishWithAi } from "@/components/entry/PolishWithAi";
 import { VoiceEntryCapture } from "@/components/entry/VoiceEntryCapture";
 import { TagEditor } from "@/components/tags/TagEditor";
 import { createLesson, toLocalDateString } from "@/lib/db";
@@ -98,6 +99,23 @@ export default function NewLessonScreen() {
           hasExistingInput={
             hasTypedEntryContent([title, content]) || tags.length > 0
           }
+        />
+
+        <PolishWithAi
+          entryType="lesson"
+          entryDate={toLocalDateString(new Date())}
+          getText={() =>
+            [title, content]
+              .filter((value) => value.trim().length > 0)
+              .join("\n\n")
+          }
+          disabled={saving}
+          onApplyTitle={setTitle}
+          onApplyContent={setContent}
+          onApplyTags={setTags}
+          getCurrentValues={() => ({ title, content, tags })}
+          titleNoun="title"
+          contentNoun="what you're learning"
         />
 
         <View style={styles.field}>

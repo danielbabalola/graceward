@@ -14,6 +14,7 @@ import type { Gratitude, Tag } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
+import { PolishWithAi } from "@/components/entry/PolishWithAi";
 import { TagChips } from "@/components/tags/TagChips";
 import { TagEditor } from "@/components/tags/TagEditor";
 import {
@@ -21,6 +22,7 @@ import {
   listTagsForEntry,
   sameTagNameSet,
   softDeleteGratitude,
+  toLocalDateString,
   updateGratitude,
 } from "@/lib/db";
 import { formatItemDate } from "@/lib/gratitude-display";
@@ -154,7 +156,10 @@ export default function GratitudeDetailScreen() {
     setDeleting(true);
     try {
       await softDeleteGratitude(gratitude.id);
-      router.replace("/(tabs)/gratitude");
+      router.replace({
+        pathname: "/(tabs)/gratitude",
+        params: { segment: "gratitude" },
+      });
     } catch (error: unknown) {
       console.warn(
         "Failed to delete gratitude:",
@@ -204,6 +209,20 @@ export default function GratitudeDetailScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
+          <PolishWithAi
+            entryType="gratitude"
+            entryDate={toLocalDateString(new Date())}
+            getText={() => contentDraft}
+            disabled={saving}
+            onApplyContent={setContentDraft}
+            onApplyTags={setTagsDraft}
+            getCurrentValues={() => ({
+              content: contentDraft,
+              tags: tagsDraft,
+            })}
+            contentNoun="gratitude"
+          />
+
           <View style={styles.field}>
             <Text style={styles.label}>What are you grateful for?</Text>
             <View style={styles.inputWrapper}>

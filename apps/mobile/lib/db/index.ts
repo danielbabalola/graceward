@@ -98,18 +98,17 @@ export {
   getLessonTagNames,
 } from "./lessons";
 export {
-  createInstruction,
-  listInstructions,
-  listRecentInstructions,
-  listInstructionsByStatus,
+  createRevelation,
+  listRevelations,
+  listRevelationsByKind,
   getInstructionFocus,
-  getInstructionById,
-  updateInstruction,
-  fulfillInstruction,
-  reopenInstruction,
-  softDeleteInstruction,
-  getInstructionTagNames,
-} from "./instructions";
+  getRevelationById,
+  updateRevelation,
+  fulfillRevelation,
+  reopenRevelation,
+  softDeleteRevelation,
+  getRevelationTagNames,
+} from "./revelations";
 export {
   hasAcknowledgedAiReflectionConsent,
   acknowledgeAiReflectionConsent,
@@ -120,6 +119,9 @@ export {
   hasAcknowledgedVoiceEntryConsent,
   acknowledgeVoiceEntryConsent,
   resetVoiceEntryConsent,
+  hasAcknowledgedAiTextPolishConsent,
+  acknowledgeAiTextPolishConsent,
+  resetAiTextPolishConsent,
   getOrCreateAiInstallId,
 } from "./preferences";
 export {

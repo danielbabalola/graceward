@@ -14,6 +14,7 @@ import type { Lesson, Tag } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
+import { PolishWithAi } from "@/components/entry/PolishWithAi";
 import { TagChips } from "@/components/tags/TagChips";
 import { TagEditor } from "@/components/tags/TagEditor";
 import {
@@ -23,6 +24,7 @@ import {
   reactivateLesson,
   sameTagNameSet,
   softDeleteLesson,
+  toLocalDateString,
   updateLesson,
 } from "@/lib/db";
 import { lessonMetaLine } from "@/lib/lesson-display";
@@ -139,7 +141,27 @@ export default function LessonDetailScreen() {
     }
   }
 
-  async function handleToggleArchive() {
+  function handleToggleArchive() {
+    if (!lesson || updatingStatus) {
+      return;
+    }
+    // Confirm before archiving (the consequential direction); moving back to
+    // active is restorative, so it happens immediately.
+    if (lesson.status === "active") {
+      Alert.alert(
+        "Archive this lesson?",
+        "It will move to Archived and out of your active list. You can move it back any time.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Archive", onPress: () => void performToggleArchive() },
+        ],
+      );
+      return;
+    }
+    void performToggleArchive();
+  }
+
+  async function performToggleArchive() {
     if (!lesson || updatingStatus) {
       return;
     }
@@ -189,7 +211,10 @@ export default function LessonDetailScreen() {
     setDeleting(true);
     try {
       await softDeleteLesson(lesson.id);
-      router.replace("/(tabs)/gratitude");
+      router.replace({
+        pathname: "/(tabs)/gratitude",
+        params: { segment: "lessons" },
+      });
     } catch (error: unknown) {
       console.warn(
         "Failed to delete lesson:",
@@ -237,6 +262,27 @@ export default function LessonDetailScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
+          <PolishWithAi
+            entryType="lesson"
+            entryDate={toLocalDateString(new Date())}
+            getText={() =>
+              [titleDraft, contentDraft]
+                .filter((value) => value.trim().length > 0)
+                .join("\n\n")
+            }
+            disabled={saving}
+            onApplyTitle={setTitleDraft}
+            onApplyContent={setContentDraft}
+            onApplyTags={setTagsDraft}
+            getCurrentValues={() => ({
+              title: titleDraft,
+              content: contentDraft,
+              tags: tagsDraft,
+            })}
+            titleNoun="title"
+            contentNoun="what you're learning"
+          />
+
           <View style={styles.field}>
             <Text style={styles.label}>A lesson I'm noticing</Text>
             <View style={styles.inputWrapper}>

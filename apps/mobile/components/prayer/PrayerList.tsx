@@ -1,31 +1,37 @@
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import type { PrayerRequest, PrayerRequestStatus, Tag } from "@graceward/shared";
-import { Card } from "@/components/ui/Card";
 import { PrayerRequestCard } from "@/components/prayer/PrayerRequestCard";
 import { TagChips } from "@/components/tags/TagChips";
 import { TagFilterBar } from "@/components/tags/TagFilterBar";
+import { AppearingView } from "@/components/ui/AppearingView";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { collectDistinctTags } from "@/lib/tag-display";
 import { listPrayerRequestsByStatus, listTagsForEntries } from "@/lib/db";
-import { colors, spacing } from "@/theme/tokens";
+import { spacing } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error";
 
 const emptyCopy: Record<
   PrayerRequestStatus,
-  { title: string; description: string }
+  { icon: "heart-outline" | "checkmark-done-outline" | "archive-outline"; title: string; description: string }
 > = {
   active: {
+    icon: "heart-outline",
     title: "Nothing here yet",
     description: "Add something you want to bring before God.",
   },
   answered: {
+    icon: "checkmark-done-outline",
     title: "No answered prayers yet",
     description:
       "When you mark a request answered, it will gather here as a reminder of God's faithfulness.",
   },
   archived: {
+    icon: "archive-outline",
     title: "Nothing archived",
     description: "Requests you archive will rest here for remembrance.",
   },
@@ -81,11 +87,7 @@ export function PrayerList({ status }: { status: PrayerRequestStatus }) {
   }, [requests, tagMap, selectedTagId]);
 
   if (loadState === "loading") {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={colors.primaryDeep} />
-      </View>
-    );
+    return <ListSkeleton />;
   }
 
   if (loadState === "error") {
@@ -101,7 +103,11 @@ export function PrayerList({ status }: { status: PrayerRequestStatus }) {
   if (requests.length === 0) {
     const copy = emptyCopy[status];
     return (
-      <Card variant="subtle" title={copy.title} description={copy.description} />
+      <EmptyState
+        icon={copy.icon}
+        title={copy.title}
+        description={copy.description}
+      />
     );
   }
 
@@ -112,10 +118,10 @@ export function PrayerList({ status }: { status: PrayerRequestStatus }) {
         selectedId={selectedTagId}
         onSelect={setSelectedTagId}
       />
-      {visibleRequests.map((request) => {
+      {visibleRequests.map((request, i) => {
         const requestTags = tagMap.get(request.id);
         return (
-          <View key={request.id} style={styles.cardGroup}>
+          <AppearingView key={request.id} index={i} style={styles.cardGroup}>
             <PrayerRequestCard
               request={request}
               onPress={() =>
@@ -128,7 +134,7 @@ export function PrayerList({ status }: { status: PrayerRequestStatus }) {
             {requestTags && requestTags.length > 0 ? (
               <TagChips tags={requestTags} />
             ) : null}
-          </View>
+          </AppearingView>
         );
       })}
     </View>
@@ -136,10 +142,6 @@ export function PrayerList({ status }: { status: PrayerRequestStatus }) {
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    paddingVertical: spacing.xxl,
-    alignItems: "center",
-  },
   list: {
     gap: spacing.sm,
   },

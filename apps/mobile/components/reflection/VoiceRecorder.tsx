@@ -10,7 +10,9 @@ import {
 import { router } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { AudioPlayback } from "@/components/journal/AudioPlayback";
+import { RecordingIndicator } from "@/components/reflection/RecordingIndicator";
 import { formatDuration } from "@/lib/journal-display";
+import { haptics } from "@/lib/haptics";
 import { useVoiceRecorder } from "@/lib/use-voice-recorder";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
@@ -73,6 +75,7 @@ export function VoiceRecorder({
     setSavingError(false);
     try {
       await onSave({ uri: previewUri, durationSeconds: previewSeconds });
+      haptics.success();
       // On success the caller navigates away; leave status as "saving".
     } catch (error: unknown) {
       console.warn(
@@ -126,13 +129,14 @@ export function VoiceRecorder({
     return (
       <View style={styles.card}>
         <Text style={styles.timer}>{formatDuration(elapsedSeconds)}</Text>
-        <Text style={styles.recordingLabel}>Recording…</Text>
+        <RecordingIndicator />
         <Text style={styles.hint}>
           Up to 15 minutes. Audio stays private on this device.
         </Text>
         <Button
           label="Stop"
           onPress={() => {
+            haptics.medium();
             void recorder.stop();
           }}
           style={styles.action}
@@ -208,6 +212,7 @@ export function VoiceRecorder({
         <Button
           label="Start recording"
           onPress={() => {
+            haptics.medium();
             void recorder.start();
           }}
           style={styles.action}
@@ -254,11 +259,6 @@ const styles = StyleSheet.create({
   timer: {
     ...typography.screenTitle,
     color: colors.primaryDeep,
-    textAlign: "center",
-  },
-  recordingLabel: {
-    ...typography.body,
-    color: colors.correctionAccent,
     textAlign: "center",
   },
   action: {

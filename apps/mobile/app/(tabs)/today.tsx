@@ -1,11 +1,6 @@
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
 import type {
   Gratitude,
@@ -20,6 +15,10 @@ import { Card } from "@/components/ui/Card";
 import { ItemCard } from "@/components/gratitude/ItemCard";
 import { Screen } from "@/components/ui/Screen";
 import { Section } from "@/components/ui/Section";
+import { AppearingView } from "@/components/ui/AppearingView";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListSkeleton } from "@/components/ui/Skeleton";
+import { PressableScale } from "@/components/ui/PressableScale";
 import {
   getInstructionFocus,
   getMostRecentAnsweredPrayer,
@@ -40,7 +39,7 @@ import {
   winMetaLine,
 } from "@/lib/gratitude-display";
 import { lessonMetaLine } from "@/lib/lesson-display";
-import { instructionMetaLine } from "@/lib/instruction-display";
+import { revelationMetaLine } from "@/lib/revelation-display";
 import { APP_TAGLINE } from "@/lib/diagnostics";
 import {
   colors,
@@ -168,11 +167,7 @@ export default function TodayScreen() {
     <Screen title="Today">
       <TodayHero />
 
-      {loadState === "loading" ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={colors.primaryDeep} />
-        </View>
-      ) : null}
+      {loadState === "loading" ? <ListSkeleton count={3} /> : null}
 
       {loadState === "error" ? (
         <Card
@@ -184,132 +179,139 @@ export default function TodayScreen() {
 
       {loadState === "ready" ? (
         <>
-          <Section title="Recent reflection">
-            {data.recentJournal ? (
-              <RecentReflectionCard entry={data.recentJournal} />
-            ) : (
-              <Card
-                variant="subtle"
-                title="Begin with one honest reflection"
-                description="When you reflect, your most recent entry will rest here."
-              />
-            )}
-          </Section>
+          <AppearingView index={0}>
+            <Section title="Recent reflection" icon="leaf-outline">
+              {data.recentJournal ? (
+                <RecentReflectionCard entry={data.recentJournal} />
+              ) : (
+                <EmptyState
+                  icon="create-outline"
+                  title="Begin with one honest reflection"
+                  description="When you reflect, your most recent entry will rest here."
+                />
+              )}
+            </Section>
+          </AppearingView>
 
-          <Section title="Today's focus">
-            {data.prayerFocus ? (
-              <ItemCard
-                meta={prayerMetaLine(data.prayerFocus)}
-                content={data.prayerFocus.title}
-                accessibilityLabel={`Open prayer focus: ${data.prayerFocus.title}`}
-                onPress={() =>
-                  router.push({
-                    pathname: "/prayer/[id]",
-                    params: { id: data.prayerFocus!.id },
-                  })
-                }
-              />
-            ) : (
-              <View style={styles.emptyBlock}>
-                <Card
-                  variant="subtle"
+          <AppearingView index={1}>
+            <Section title="Today's focus" icon="sunny-outline">
+              {data.prayerFocus ? (
+                <ItemCard
+                  meta={prayerMetaLine(data.prayerFocus)}
+                  content={data.prayerFocus.title}
+                  accessibilityLabel={`Open prayer focus: ${data.prayerFocus.title}`}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/prayer/[id]",
+                      params: { id: data.prayerFocus!.id },
+                    })
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon="heart-outline"
                   title="Today's Prayer Focus"
                   description="Add something you'd like to bring before God."
-                />
-                <Button
-                  label="Add prayer request"
-                  variant="secondary"
-                  onPress={() => router.push("/prayer/new")}
-                />
-              </View>
-            )}
+                >
+                  <Button
+                    label="Add prayer request"
+                    variant="secondary"
+                    onPress={() => router.push("/prayer/new")}
+                  />
+                </EmptyState>
+              )}
 
-            {data.recentGratitude ? (
-              <ItemCard
-                meta={gratitudeMetaLine(data.recentGratitude)}
-                content={contentPreview(data.recentGratitude.content)}
-                accessibilityLabel={`Open gratitude: ${contentPreview(
-                  data.recentGratitude.content,
-                )}`}
-                onPress={() =>
-                  router.push({
-                    pathname: "/gratitude/[id]",
-                    params: { id: data.recentGratitude!.id },
-                  })
-                }
-              />
-            ) : (
-              <View style={styles.emptyBlock}>
-                <Card
-                  variant="subtle"
+              {data.recentGratitude ? (
+                <ItemCard
+                  meta={gratitudeMetaLine(data.recentGratitude)}
+                  content={contentPreview(data.recentGratitude.content)}
+                  accessibilityLabel={`Open gratitude: ${contentPreview(
+                    data.recentGratitude.content,
+                  )}`}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/gratitude/[id]",
+                      params: { id: data.recentGratitude!.id },
+                    })
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon="bookmark-outline"
                   title="Recent Gratitude"
                   description="Notice one mercy from today, no matter how small."
-                />
-                <Button
-                  label="Add gratitude"
-                  variant="secondary"
-                  onPress={() => router.push("/gratitude/new")}
-                />
-              </View>
-            )}
-          </Section>
+                >
+                  <Button
+                    label="Add gratitude"
+                    variant="secondary"
+                    onPress={() => router.push("/gratitude/new")}
+                  />
+                </EmptyState>
+              )}
+            </Section>
+          </AppearingView>
 
-          <Section title="Testimonies">
-            {reminder ? (
-              <FaithfulnessReminderCard reminder={reminder} />
-            ) : (
-              <View style={styles.emptyBlock}>
-                <Card
-                  variant="subtle"
+          <AppearingView index={2}>
+            <Section title="Testimonies" icon="sparkles-outline">
+              {reminder ? (
+                <FaithfulnessReminderCard reminder={reminder} />
+              ) : (
+                <EmptyState
+                  icon="ribbon-outline"
                   title="Remembering God's faithfulness"
                   description="Answered prayers and major moments of God's faithfulness will appear here over time."
-                />
-                <Button
-                  label="Add testimony"
-                  variant="secondary"
-                  onPress={() => router.push("/win/new")}
-                />
-              </View>
-            )}
-          </Section>
+                >
+                  <Button
+                    label="Add testimony"
+                    variant="secondary"
+                    onPress={() => router.push("/win/new")}
+                  />
+                </EmptyState>
+              )}
+            </Section>
+          </AppearingView>
 
           {data.recentLesson ? (
-            <Section title="What I'm Learning">
-              <ItemCard
-                meta={lessonMetaLine(data.recentLesson)}
-                content={data.recentLesson.title}
-                accentColor={colors.primaryDeep}
-                accessibilityLabel={`Open lesson: ${data.recentLesson.title}`}
-                onPress={() =>
-                  router.push({
-                    pathname: "/lesson/[id]",
-                    params: { id: data.recentLesson!.id },
-                  })
-                }
-              />
-            </Section>
+            <AppearingView index={3}>
+              <Section title="What I'm Learning" icon="school-outline">
+                <ItemCard
+                  meta={lessonMetaLine(data.recentLesson)}
+                  content={data.recentLesson.title}
+                  accentColor={colors.primaryDeep}
+                  accessibilityLabel={`Open lesson: ${data.recentLesson.title}`}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/lesson/[id]",
+                      params: { id: data.recentLesson!.id },
+                    })
+                  }
+                />
+              </Section>
+            </AppearingView>
           ) : null}
 
           {data.recentInstruction ? (
-            <Section title="What I'm Being Asked">
-              <ItemCard
-                meta={instructionMetaLine(data.recentInstruction)}
-                content={data.recentInstruction.title}
-                accentColor={colors.primaryDeep}
-                accessibilityLabel={`Open instruction: ${data.recentInstruction.title}`}
-                onPress={() =>
-                  router.push({
-                    pathname: "/instruction/[id]",
-                    params: { id: data.recentInstruction!.id },
-                  })
-                }
-              />
-            </Section>
+            <AppearingView index={4}>
+              <Section title="What I'm Being Asked" icon="compass-outline">
+                <ItemCard
+                  meta={revelationMetaLine(data.recentInstruction, false)}
+                  content={data.recentInstruction.title}
+                  accentColor={colors.primaryDeep}
+                  accessibilityLabel={`Open instruction: ${data.recentInstruction.title}`}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/revelation/[id]",
+                      params: { id: data.recentInstruction!.id },
+                    })
+                  }
+                />
+              </Section>
+            </AppearingView>
           ) : null}
         </>
       ) : null}
 
-      <Section title="Review">
+      <Section title="Review" icon="calendar-outline">
         <Card
           eyebrow="Coming later"
           variant="subtle"
@@ -351,22 +353,29 @@ function dailyPrompt(now: Date = new Date()): string {
  */
 function TodayHero() {
   return (
-    <View style={styles.hero}>
+    <LinearGradient
+      colors={["#FBE7C6", colors.primaryLight, "#EAF7FF"]}
+      locations={[0, 0.55, 1]}
+      start={{ x: 0.1, y: 0 }}
+      end={{ x: 0.9, y: 1 }}
+      style={styles.hero}
+    >
       <View style={styles.heroSun} />
       <View style={styles.heroArch}>
         <Text style={styles.heroEyebrow}>A moment with God</Text>
         <Text style={styles.heroTagline}>{APP_TAGLINE}</Text>
         <Text style={styles.heroPrompt}>{dailyPrompt()}</Text>
-        <Pressable
+        <PressableScale
           onPress={() => router.push("/reflection")}
+          haptic="light"
           accessibilityRole="button"
           accessibilityLabel="Begin a new reflection"
-          style={({ pressed }) => [styles.heroCta, pressed && styles.heroCtaPressed]}
+          style={styles.heroCta}
         >
           <Text style={styles.heroCtaLabel}>Begin Reflection</Text>
-        </Pressable>
+        </PressableScale>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -431,23 +440,15 @@ function FaithfulnessReminderCard({
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    paddingVertical: spacing.xxl,
-    alignItems: "center",
-  },
-  emptyBlock: {
-    gap: spacing.sm,
-  },
   hero: {
     alignItems: "center",
-    backgroundColor: colors.primaryLight,
     borderRadius: radii.lg,
     paddingTop: spacing.xxl,
     paddingBottom: spacing.lg,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.lg,
     overflow: "hidden",
-    ...shadows.card,
+    ...shadows.medium,
   },
   // Soft dawn "sun" rising behind the arch.
   heroSun: {
@@ -497,9 +498,7 @@ const styles = StyleSheet.create({
     minHeight: touchTarget,
     justifyContent: "center",
     alignItems: "center",
-  },
-  heroCtaPressed: {
-    opacity: 0.9,
+    ...shadows.low,
   },
   heroCtaLabel: {
     ...typography.cardTitle,

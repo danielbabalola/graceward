@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { StyleSheet, Text, View, ViewStyle } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { colors, radii, shadows, spacing, touchTarget, typography } from "@/theme/tokens";
 
 type CardVariant = "default" | "primary" | "subtle";
@@ -74,13 +75,9 @@ export function Card({
   }
 
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={({ pressed }) => [pressed && styles.pressed]}
-    >
+    <PressableScale onPress={onPress} accessibilityRole="button">
       {content}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -103,8 +100,5 @@ const styles = StyleSheet.create({
   },
   description: {
     ...typography.bodySmall,
-  },
-  pressed: {
-    opacity: 0.92,
   },
 });

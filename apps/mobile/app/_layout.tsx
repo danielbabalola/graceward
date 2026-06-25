@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import {
+  Fraunces_400Regular,
+  Fraunces_500Medium,
+  Fraunces_600SemiBold,
+  useFonts,
+} from "@expo-google-fonts/fraunces";
 import { initializeDatabase } from "@/lib/db";
 import { colors, spacing, typography } from "@/theme/tokens";
 
@@ -9,6 +15,14 @@ type DbState = "loading" | "ready" | "error";
 
 export default function RootLayout() {
   const [dbState, setDbState] = useState<DbState>("loading");
+  const [fontsLoaded, fontError] = useFonts({
+    Fraunces_400Regular,
+    Fraunces_500Medium,
+    Fraunces_600SemiBold,
+  });
+  // Don't let a font-loading failure trap the app on the splash gate; fall
+  // back to the system font instead (headings just won't use the serif).
+  const fontsReady = fontsLoaded || fontError != null;
 
   useEffect(() => {
     let active = true;
@@ -32,17 +46,17 @@ export default function RootLayout() {
     };
   }, []);
 
-  if (dbState !== "ready") {
+  if (dbState !== "ready" || !fontsReady) {
     return (
       <View style={styles.gate}>
         <StatusBar style="dark" />
-        {dbState === "loading" ? (
-          <ActivityIndicator color={colors.primaryDeep} />
-        ) : (
+        {dbState === "error" ? (
           <Text style={styles.errorText}>
             Something went wrong preparing your private journal. Please restart
             the app.
           </Text>
+        ) : (
+          <ActivityIndicator color={colors.primaryDeep} />
         )}
       </View>
     );

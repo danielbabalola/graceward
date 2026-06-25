@@ -300,7 +300,7 @@ export default function AiReflectionScreen() {
         variant="primary"
         eyebrow="A reflection to consider"
         title="Let Graceward reflect with you"
-        description="Graceward will gently read this reflection and offer a short reflection to consider, plus optional prayers, gratitudes, faithfulness moments, and questions. You choose what, if anything, to save."
+        description="Graceward will gently read this reflection and offer a short reflection to consider, plus optional prayers, gratitudes, testimonies, and questions. You choose what, if anything, to save."
       />
       <Text style={styles.privacyNote}>{PRIVACY_BODY}</Text>
       <Button

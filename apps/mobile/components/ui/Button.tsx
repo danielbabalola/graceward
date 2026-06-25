@@ -1,11 +1,5 @@
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextStyle,
-  ViewStyle,
-} from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TextStyle, ViewStyle } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { colors, radii, spacing, touchTarget, typography } from "@/theme/tokens";
 
 type ButtonVariant = "primary" | "secondary" | "destructive";
@@ -54,16 +48,16 @@ export function Button({
   const isDisabled = disabled || loading;
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       disabled={isDisabled}
+      haptic={variant === "destructive" ? "medium" : "light"}
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
-      style={({ pressed }) => [
+      style={[
         styles.button,
         containerVariants[variant],
         isDisabled && styles.disabled,
-        pressed && !isDisabled && styles.pressed,
         style,
       ]}
     >
@@ -74,7 +68,7 @@ export function Button({
       ) : (
         <Text style={[styles.label, labelVariants[variant]]}>{label}</Text>
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -92,8 +86,5 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.4,
-  },
-  pressed: {
-    opacity: 0.9,
   },
 });

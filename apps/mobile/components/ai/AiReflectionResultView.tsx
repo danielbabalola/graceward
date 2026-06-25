@@ -5,9 +5,9 @@ import { Section } from "@/components/ui/Section";
 import { SuggestionCard, type SaveStatus } from "@/components/ai/SuggestionCard";
 import {
   createGratitude,
-  createInstruction,
   createLesson,
   createPrayerRequest,
+  createRevelation,
   createWin,
   faithfulnessSuggestionFingerprint,
   gratitudeSuggestionFingerprint,
@@ -374,7 +374,8 @@ export function AiReflectionResultView({
                       createdItemType: "instruction",
                     },
                     () =>
-                      createInstruction({
+                      createRevelation({
+                        kind: "instruction",
                         title: draft.title,
                         content: draft.description || draft.title,
                         dueAt: draft.followUpAt,

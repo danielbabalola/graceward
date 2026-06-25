@@ -15,6 +15,11 @@ describe("parseRememberSegment", () => {
     expect(parseRememberSegment("lessons")).toBe("lessons");
   });
 
+  it("maps the revelation param (singular or plural) to revelations", () => {
+    expect(parseRememberSegment("revelation")).toBe("revelations");
+    expect(parseRememberSegment("revelations")).toBe("revelations");
+  });
+
   it("maps the instruction param (singular or plural) to instructions", () => {
     expect(parseRememberSegment("instruction")).toBe("instructions");
     expect(parseRememberSegment("instructions")).toBe("instructions");

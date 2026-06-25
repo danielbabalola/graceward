@@ -71,8 +71,8 @@ export function RememberFromReflection({
         variant="secondary"
         onPress={() =>
           router.push({
-            pathname: "/instruction/new",
-            params: { sourceJournalEntryId: journalEntryId },
+            pathname: "/revelation/new",
+            params: { kind: "instruction", sourceJournalEntryId: journalEntryId },
           })
         }
         style={styles.action}

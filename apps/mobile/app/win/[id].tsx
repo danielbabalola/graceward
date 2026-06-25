@@ -12,8 +12,10 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import type { Tag, Win } from "@graceward/shared";
 import { Button } from "@/components/ui/Button";
+import { DateSelector } from "@/components/ui/DateSelector";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { SourceReflectionLink } from "@/components/journal/SourceReflectionLink";
+import { PolishWithAi } from "@/components/entry/PolishWithAi";
 import { TagChips } from "@/components/tags/TagChips";
 import { TagEditor } from "@/components/tags/TagEditor";
 import {
@@ -21,9 +23,10 @@ import {
   listTagsForEntry,
   sameTagNameSet,
   softDeleteWin,
+  toLocalDateString,
   updateWin,
 } from "@/lib/db";
-import { formatItemDate } from "@/lib/gratitude-display";
+import { winMetaLine } from "@/lib/gratitude-display";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
 
@@ -39,6 +42,7 @@ export default function WinDetailScreen() {
 
   const [contentDraft, setContentDraft] = useState("");
   const [tagsDraft, setTagsDraft] = useState<string[]>([]);
+  const [occurredAtDraft, setOccurredAtDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -47,6 +51,7 @@ export default function WinDetailScreen() {
       !saving &&
       win != null &&
       (contentDraft !== win.content ||
+        occurredAtDraft !== win.occurredAt ||
         !sameTagNameSet(tagsDraft, tags.map((tag) => tag.name))),
   );
 
@@ -95,6 +100,7 @@ export default function WinDetailScreen() {
     }
     setContentDraft(win.content);
     setTagsDraft(tags.map((tag) => tag.name));
+    setOccurredAtDraft(win.occurredAt);
     setEditing(true);
   }
 
@@ -107,6 +113,7 @@ export default function WinDetailScreen() {
       const updated = await updateWin(win.id, {
         content: contentDraft.trim(),
         tags: tagsDraft,
+        occurredAt: occurredAtDraft,
       });
       if (updated) {
         setWin(updated);
@@ -154,7 +161,10 @@ export default function WinDetailScreen() {
     setDeleting(true);
     try {
       await softDeleteWin(win.id);
-      router.replace("/(tabs)/gratitude");
+      router.replace({
+        pathname: "/(tabs)/gratitude",
+        params: { segment: "faithfulness" },
+      });
     } catch (error: unknown) {
       console.warn(
         "Failed to delete win:",
@@ -204,13 +214,27 @@ export default function WinDetailScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
+          <PolishWithAi
+            entryType="faithfulness"
+            entryDate={toLocalDateString(new Date())}
+            getText={() => contentDraft}
+            disabled={saving}
+            onApplyContent={setContentDraft}
+            onApplyTags={setTagsDraft}
+            getCurrentValues={() => ({
+              content: contentDraft,
+              tags: tagsDraft,
+            })}
+            contentNoun="testimony"
+          />
+
           <View style={styles.field}>
             <Text style={styles.label}>Where did you see God's goodness?</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 value={contentDraft}
                 onChangeText={setContentDraft}
-                placeholder="Something that went well, or a way God showed up…"
+                placeholder="A way God showed up — His provision, deliverance, or faithfulness…"
                 placeholderTextColor={colors.textSubtle}
                 multiline
                 textAlignVertical="top"
@@ -227,6 +251,16 @@ export default function WinDetailScreen() {
               placeholder="e.g. Provision, Healing, Perseverance"
             />
           </View>
+
+          <DateSelector
+            label="When this happened (optional)"
+            value={occurredAtDraft}
+            onChange={setOccurredAtDraft}
+            maxDate={toLocalDateString(new Date())}
+            allowClear
+            emptyLabel="No date"
+            hint="The day God showed up. Today or a past day."
+          />
 
           <Button
             label="Save changes"
@@ -250,7 +284,7 @@ export default function WinDetailScreen() {
   return (
     <FlowScreen
       title="Testimony"
-      subtitle={formatItemDate(win.createdAt)}
+      subtitle={winMetaLine(win)}
     >
       <View style={styles.bodyCard}>
         <Text style={styles.body}>{win.content}</Text>

@@ -1,14 +1,17 @@
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import type { JournalEntry, Tag } from "@graceward/shared";
 import { Card } from "@/components/ui/Card";
 import { JournalEntryCard } from "@/components/journal/JournalEntryCard";
 import { TagChips } from "@/components/tags/TagChips";
 import { TagFilterBar } from "@/components/tags/TagFilterBar";
+import { AppearingView } from "@/components/ui/AppearingView";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { collectDistinctTags } from "@/lib/tag-display";
 import { listJournalEntries, listTagsForEntries } from "@/lib/db";
-import { colors, spacing } from "@/theme/tokens";
+import { spacing } from "@/theme/tokens";
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -60,11 +63,7 @@ export function JournalTimeline() {
   }, [entries, tagMap, selectedTagId]);
 
   if (loadState === "loading") {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={colors.primaryDeep} />
-      </View>
-    );
+    return <ListSkeleton />;
   }
 
   if (loadState === "error") {
@@ -79,8 +78,8 @@ export function JournalTimeline() {
 
   if (entries.length === 0) {
     return (
-      <Card
-        variant="subtle"
+      <EmptyState
+        icon="create-outline"
         title="Start with one honest reflection"
         description="You do not need perfect words."
       />
@@ -94,10 +93,10 @@ export function JournalTimeline() {
         selectedId={selectedTagId}
         onSelect={setSelectedTagId}
       />
-      {visibleEntries.map((entry) => {
+      {visibleEntries.map((entry, i) => {
         const entryTags = tagMap.get(entry.id);
         return (
-          <View key={entry.id} style={styles.cardGroup}>
+          <AppearingView key={entry.id} index={i} style={styles.cardGroup}>
             <JournalEntryCard
               entry={entry}
               onPress={() =>
@@ -110,7 +109,7 @@ export function JournalTimeline() {
             {entryTags && entryTags.length > 0 ? (
               <TagChips tags={entryTags} />
             ) : null}
-          </View>
+          </AppearingView>
         );
       })}
     </View>
@@ -118,10 +117,6 @@ export function JournalTimeline() {
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    paddingVertical: spacing.xxl,
-    alignItems: "center",
-  },
   list: {
     gap: spacing.sm,
   },

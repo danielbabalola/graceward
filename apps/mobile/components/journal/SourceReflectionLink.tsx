@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import type { JournalEntry } from "@graceward/shared";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { getJournalEntryById } from "@/lib/db";
 import { sourceReflectionLabel } from "@/lib/journal-display";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
@@ -67,16 +68,16 @@ export function SourceReflectionLink({
   }
 
   return (
-    <Pressable
+    <PressableScale
       onPress={() =>
         router.push({ pathname: "/journal/[id]", params: { id: entry.id } })
       }
       accessibilityRole="button"
       accessibilityLabel={`Open source reflection: ${label}`}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={styles.card}
     >
       {inner}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -89,9 +90,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
     gap: spacing.xs,
-  },
-  pressed: {
-    opacity: 0.92,
   },
   eyebrow: {
     ...typography.caption,
