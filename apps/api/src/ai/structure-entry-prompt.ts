@@ -73,7 +73,7 @@ ${TAGS_RULE}`,
   "tags"?: [string]    // see tags rule below
 }
 ${TAGS_RULE}`,
-  faithfulness: `This entry is a FAITHFULNESS MOMENT — a place the user saw God's goodness, provision, growth, help, or an answered prayer. Return ONLY a single JSON object (no markdown, no commentary) with exactly these keys:
+  faithfulness: `This entry is a TESTIMONY (a faithfulness moment) — a significant highlight the user wants to remember and look back on: an answered prayer, someone coming to faith or opening to the gospel, a healing, a new job, an engagement, marriage, or new relationship, a major provision, or a clear breakthrough or reconciliation. The user chose to record this themselves; your only job is to tidy what they actually said into the field — never judge whether it qualifies, embellish it, or add anything they did not say. Return ONLY a single JSON object (no markdown, no commentary) with exactly these keys:
 {
   "content": string,   // where they saw God's goodness, in their own words, lightly cleaned
   "tags"?: [string]    // see tags rule below

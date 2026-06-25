@@ -1,20 +1,23 @@
 import { useCallback, useMemo, useState } from "react";
 import { Alert, Linking, StyleSheet, Text, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Screen } from "@/components/ui/Screen";
 import { Section } from "@/components/ui/Section";
 import { SettingsRow } from "@/components/ui/SettingsRow";
 import {
+  acknowledgeAiReflectionConsent,
   deleteAllLocalData,
   hasAcknowledgedAiReflectionConsent,
   hasAcknowledgedVoiceEntryConsent,
   hasAcknowledgedVoiceTranscriptionConsent,
+  isAutoAiReflectionEnabled,
   resetAiReflectionConsent,
   resetVoiceEntryConsent,
   resetVoiceTranscriptionConsent,
+  setAutoAiReflectionEnabled,
 } from "@/lib/db";
 import { getDiagnosticInfo } from "@/lib/app-info";
 import {
@@ -42,6 +45,7 @@ export default function SettingsScreen() {
     useState<ConsentState>("loading");
   const [voiceEntryConsentState, setVoiceEntryConsentState] =
     useState<ConsentState>("loading");
+  const [autoReflectionEnabled, setAutoReflectionEnabled] = useState(false);
   const [helpMessage, setHelpMessage] = useState<HelpMessage>(null);
 
   // Read once for the About display. Handlers re-read fresh so the diagnostics
@@ -61,12 +65,17 @@ export default function SettingsScreen() {
       let active = true;
       (async () => {
         try {
-          const [aiAcknowledged, transcriptionAcknowledged, voiceEntryAcknowledged] =
-            await Promise.all([
-              hasAcknowledgedAiReflectionConsent(),
-              hasAcknowledgedVoiceTranscriptionConsent(),
-              hasAcknowledgedVoiceEntryConsent(),
-            ]);
+          const [
+            aiAcknowledged,
+            transcriptionAcknowledged,
+            voiceEntryAcknowledged,
+            autoReflection,
+          ] = await Promise.all([
+            hasAcknowledgedAiReflectionConsent(),
+            hasAcknowledgedVoiceTranscriptionConsent(),
+            hasAcknowledgedVoiceEntryConsent(),
+            isAutoAiReflectionEnabled(),
+          ]);
           if (active) {
             setConsentState(
               aiAcknowledged ? "acknowledged" : "not-acknowledged",
@@ -77,6 +86,7 @@ export default function SettingsScreen() {
             setVoiceEntryConsentState(
               voiceEntryAcknowledged ? "acknowledged" : "not-acknowledged",
             );
+            setAutoReflectionEnabled(autoReflection);
           }
         } catch {
           // Treat a read failure as not acknowledged so the notices still show.
@@ -84,6 +94,7 @@ export default function SettingsScreen() {
             setConsentState("not-acknowledged");
             setTranscriptionConsentState("not-acknowledged");
             setVoiceEntryConsentState("not-acknowledged");
+            setAutoReflectionEnabled(false);
           }
         }
       })();
@@ -92,6 +103,53 @@ export default function SettingsScreen() {
       };
     }, []),
   );
+
+  // Turning auto-reflection on changes what leaves the device (eligible
+  // reflections are sent automatically after saving), so confirm first. The
+  // confirmation doubles as the AI reflection consent, so the automatic flow
+  // never interrupts with a separate notice. Turning it off is immediate.
+  function handleToggleAutoReflection(next: boolean) {
+    if (!next) {
+      void performSetAutoReflection(false);
+      return;
+    }
+    Alert.alert(
+      "Reflect automatically?",
+      "When this is on, saving an eligible reflection automatically sends its text to Graceward's AI service for a reflection — no extra tap. You can turn this off any time.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Turn on", onPress: () => void enableAutoReflection() },
+      ],
+    );
+  }
+
+  async function enableAutoReflection() {
+    try {
+      // Enabling implies consent to automatic analysis, so record it too; this
+      // keeps the per-reflection notice from interrupting the automatic flow.
+      await acknowledgeAiReflectionConsent();
+      await setAutoAiReflectionEnabled(true);
+      setAutoReflectionEnabled(true);
+      setConsentState("acknowledged");
+    } catch (error: unknown) {
+      console.warn(
+        "Failed to enable automatic AI reflection:",
+        error instanceof Error ? error.message : "unknown error",
+      );
+    }
+  }
+
+  async function performSetAutoReflection(enabled: boolean) {
+    try {
+      await setAutoAiReflectionEnabled(enabled);
+      setAutoReflectionEnabled(enabled);
+    } catch (error: unknown) {
+      console.warn(
+        "Failed to update automatic AI reflection preference:",
+        error instanceof Error ? error.message : "unknown error",
+      );
+    }
+  }
 
   // Resetting a consent notice isn't destructive, but it changes future
   // behavior (the privacy notice will reappear), so confirm before doing it.
@@ -232,6 +290,7 @@ export default function SettingsScreen() {
       setConsentState("not-acknowledged");
       setTranscriptionConsentState("not-acknowledged");
       setVoiceEntryConsentState("not-acknowledged");
+      setAutoReflectionEnabled(false);
       setDeleteState("done");
     } catch (error: unknown) {
       console.warn(
@@ -407,8 +466,14 @@ export default function SettingsScreen() {
 
       <Section title="AI & Cloud">
         <SettingsRow
-          title="AI reflections are manual"
-          description="AI reflections run only when you choose them. Automatic analysis is not enabled."
+          title="Reflect automatically"
+          description={
+            autoReflectionEnabled
+              ? "On. Saving an eligible reflection automatically sends its text to Graceward for a reflection."
+              : "Off. AI reflections run only when you tap “Reflect with Graceward.” Turn this on to reflect automatically after saving."
+          }
+          toggleValue={autoReflectionEnabled}
+          onToggle={handleToggleAutoReflection}
         />
         <SettingsRow
           title="What is sent for AI"
@@ -513,6 +578,22 @@ export default function SettingsScreen() {
           description="Only safe app details: version, build, platform, OS, which API environment you're on (host only), and a timestamp. It never includes your reflections, prayers, gratitudes, testimonies, audio, transcripts, or AI responses — and no API keys or secrets."
         />
       </Section>
+
+      {__DEV__ ? (
+        <Section title="Developer">
+          <Card
+            variant="subtle"
+            eyebrow="Dev only"
+            title="AI result preview"
+            description="Preview the AI reflection result UI (Scripture, quote, and suggested-prayer sections) with sample data. Nothing is saved. Hidden in production builds."
+          />
+          <Button
+            label="Open AI result preview"
+            variant="secondary"
+            onPress={() => router.push("/dev/ai-preview")}
+          />
+        </Section>
+      ) : null}
 
       <Section title="About">
         <View style={styles.aboutCard}>

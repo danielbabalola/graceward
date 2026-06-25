@@ -35,10 +35,16 @@ const PRIVACY_BODY =
   "This sends this reflection's text to Graceward's AI service for analysis. Nothing is sent unless you choose this.";
 
 export default function AiReflectionScreen() {
-  const { id, reflectAgain } = useLocalSearchParams<{
+  const { id, reflectAgain, auto } = useLocalSearchParams<{
     id: string;
     reflectAgain?: string;
+    auto?: string;
   }>();
+
+  // Both entry points request a one-time, consent-gated auto analysis on mount:
+  // "reflectAgain" comes from re-running a stale entry; "auto" comes from saving
+  // a reflection while automatic AI reflection is enabled in Settings.
+  const autoStart = reflectAgain === "1" || auto === "1";
 
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [result, setResult] = useState<AnalyzeReflectionResponse | null>(null);
@@ -53,7 +59,7 @@ export default function AiReflectionScreen() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   // True while an auto "Reflect again" is pending/starting, so we show a loader
   // instead of briefly flashing the previous (stale) result.
-  const [autoReflecting, setAutoReflecting] = useState(reflectAgain === "1");
+  const [autoReflecting, setAutoReflecting] = useState(autoStart);
   // Guards the one-time auto "Reflect again" triggered from journal detail.
   const autoReflectHandledRef = useRef(false);
 
@@ -138,11 +144,12 @@ export default function AiReflectionScreen() {
     })();
   }
 
-  // "Reflect again" from journal detail arrives with reflectAgain=1. Treat it as
-  // an explicit user action: run the same consent-gated flow exactly once.
+  // An auto-start request (reflectAgain=1 from a stale entry, or auto=1 from an
+  // auto-reflection save) is treated as an explicit user action: run the same
+  // consent-gated flow exactly once.
   useEffect(() => {
     if (
-      reflectAgain !== "1" ||
+      !autoStart ||
       loadState !== "ready" ||
       !entry ||
       autoReflectHandledRef.current
@@ -154,7 +161,7 @@ export default function AiReflectionScreen() {
     startAnalysis();
     // startAnalysis is stable for this purpose; only re-evaluate on these inputs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reflectAgain, loadState, entry]);
+  }, [autoStart, loadState, entry]);
 
   async function handleAnalyze() {
     if (!entry || analysisState === "analyzing") {

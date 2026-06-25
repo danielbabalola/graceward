@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Redirect, router, useLocalSearchParams } from "expo-router";
+import { Redirect, useLocalSearchParams } from "expo-router";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { GuidedPromptEditor } from "@/components/reflection/GuidedPromptEditor";
 import { ReflectionDateSelector } from "@/components/reflection/ReflectionDateSelector";
 import { createJournalEntry } from "@/lib/db";
-import { handleReflectionSaveError } from "@/lib/reflection-save";
+import {
+  handleReflectionSaveError,
+  navigateAfterReflectionSave,
+} from "@/lib/reflection-save";
 import {
   compileGuidedReflection,
   deriveGuidedTitle,
@@ -34,7 +37,7 @@ export default function GuidedTypeScreen() {
   const config = guidedModeConfigs[mode];
 
   async function handleSave(answers: GuidedAnswers) {
-    await createJournalEntry({
+    const entry = await createJournalEntry({
       reflectionPath: "guided",
       mode: config.mode,
       inputType: "text",
@@ -48,7 +51,7 @@ export default function GuidedTypeScreen() {
       syncStatus: "local_only",
     });
     allowNextNavigation();
-    router.replace("/(tabs)/journal");
+    await navigateAfterReflectionSave(entry);
   }
 
   return (

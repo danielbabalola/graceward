@@ -1,11 +1,15 @@
 import {
-  analyzeReflectionResponseSchema,
   MAX_FOLLOW_UP_QUESTIONS,
+  MAX_SUGGESTED_PRAYER_CHARS,
   MAX_SUGGESTIONS_PER_KIND,
   MAX_TAGS_PER_ENTRY,
+  reflectionModelOutputSchema,
   type AnalyzeReflectionResponse,
+  type ReflectionModelOutput,
 } from "@graceward/ai-schemas";
 import { buildUserPrompt, REFLECTION_SYSTEM_PROMPT } from "./prompt.js";
+import { resolveScripture } from "./scripture-pack.js";
+import { resolveQuote } from "./quote-pack.js";
 import { AiError, type ReflectionAnalysisProvider } from "./types.js";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
@@ -137,7 +141,7 @@ export function createOpenAiProvider(): ReflectionAnalysisProvider {
         );
       }
 
-      const result = analyzeReflectionResponseSchema.safeParse(parsedJson);
+      const result = reflectionModelOutputSchema.safeParse(parsedJson);
       if (!result.success) {
         throw new AiError(
           "AI_INVALID_RESPONSE",
@@ -146,7 +150,7 @@ export function createOpenAiProvider(): ReflectionAnalysisProvider {
         );
       }
 
-      return clampResult(result.data);
+      return clampResult(resolveModelOutput(result.data));
     },
   };
 }
@@ -171,12 +175,64 @@ function extractMessageContent(payload: unknown): string | null {
   return typeof content === "string" ? content : null;
 }
 
+/**
+ * Builds the public response from the validated model output by resolving the
+ * model-chosen `scriptureId`/`quoteId` to canonical entries from the curated
+ * packs. The model never authors verse/quote text, so an unknown or null id
+ * simply omits that section — the wording can never be fabricated. The
+ * suggested prayer is model-authored and passes through (trimmed/clamped later).
+ */
+export function resolveModelOutput(
+  output: ReflectionModelOutput,
+): AnalyzeReflectionResponse {
+  const { scriptureId, quoteId, ...rest } = output;
+
+  const response: AnalyzeReflectionResponse = { ...rest };
+
+  const scripture = resolveScripture(scriptureId);
+  if (scripture) {
+    response.scripture = {
+      reference: scripture.reference,
+      text: scripture.text,
+      translation: scripture.translation,
+      theme: scripture.themes[0],
+    };
+  }
+
+  const quote = resolveQuote(quoteId);
+  if (quote) {
+    response.quote = {
+      text: quote.text,
+      author: quote.author,
+      ...(quote.source ? { source: quote.source } : {}),
+    };
+  }
+
+  return response;
+}
+
 /** Caps a suggestion's optional tag array to the per-entry maximum. */
 function clampTags<T extends { tags?: string[] }>(item: T): T {
   if (!item.tags) {
     return item;
   }
   return { ...item, tags: item.tags.slice(0, MAX_TAGS_PER_ENTRY) };
+}
+
+/**
+ * Normalizes the model-authored suggested prayer: trims surrounding whitespace,
+ * caps the length defensively, and drops it entirely when empty so the client
+ * never renders a blank prayer card.
+ */
+function clampSuggestedPrayer(prayer: string | undefined): string | undefined {
+  if (typeof prayer !== "string") {
+    return undefined;
+  }
+  const trimmed = prayer.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return trimmed.slice(0, MAX_SUGGESTED_PRAYER_CHARS);
 }
 
 /** Defensive cap on list sizes regardless of what the model returns. Exported
@@ -186,6 +242,7 @@ export function clampResult(
 ): AnalyzeReflectionResponse {
   return {
     ...result,
+    suggestedPrayer: clampSuggestedPrayer(result.suggestedPrayer),
     prayerSuggestions: result.prayerSuggestions
       .slice(0, MAX_SUGGESTIONS_PER_KIND)
       .map(clampTags),

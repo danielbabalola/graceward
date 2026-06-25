@@ -11,6 +11,7 @@ type PreferenceKey =
   | "voiceTranscriptionConsentAcknowledged"
   | "voiceEntryConsentAcknowledged"
   | "aiTextPolishConsentAcknowledged"
+  | "autoAiReflectionEnabled"
   | "aiInstallId";
 
 type PreferenceRow = {
@@ -128,6 +129,29 @@ export async function acknowledgeAiTextPolishConsent(): Promise<void> {
 /** Clears the acknowledgement so the polish notice shows again. */
 export async function resetAiTextPolishConsent(): Promise<void> {
   await clearPreference(AI_TEXT_POLISH_CONSENT_KEY);
+}
+
+const AUTO_AI_REFLECTION_KEY: PreferenceKey = "autoAiReflectionEnabled";
+
+/**
+ * Whether AI reflection runs automatically after an eligible reflection is
+ * saved. Defaults to false: a reflection's text never leaves the device for AI
+ * analysis unless the user taps "Reflect with Graceward", or opts into this in
+ * Settings. Opting in is gated behind the AI reflection consent (the toggle's
+ * confirmation acknowledges it), so enabling this never bypasses consent.
+ */
+export async function isAutoAiReflectionEnabled(): Promise<boolean> {
+  return (await getPreference(AUTO_AI_REFLECTION_KEY)) === "true";
+}
+
+/**
+ * Enables or disables automatic AI reflection after saving an eligible entry.
+ * Stored device-locally only; cleared by "Delete all local data".
+ */
+export async function setAutoAiReflectionEnabled(
+  enabled: boolean,
+): Promise<void> {
+  await setPreference(AUTO_AI_REFLECTION_KEY, enabled ? "true" : "false");
 }
 
 const AI_INSTALL_ID_KEY: PreferenceKey = "aiInstallId";

@@ -7,12 +7,15 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { FlowScreen } from "@/components/reflection/FlowScreen";
 import { ReflectionDateSelector } from "@/components/reflection/ReflectionDateSelector";
 import { createJournalEntry } from "@/lib/db";
-import { handleReflectionSaveError } from "@/lib/reflection-save";
+import {
+  handleReflectionSaveError,
+  navigateAfterReflectionSave,
+} from "@/lib/reflection-save";
 import { resolveInitialEntryDate } from "@/lib/reflection-date";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { colors, radii, spacing, typography } from "@/theme/tokens";
@@ -40,7 +43,7 @@ export default function FreeFlowTypeScreen() {
 
     setSaving(true);
     try {
-      await createJournalEntry({
+      const entry = await createJournalEntry({
         reflectionPath: "free_flow",
         mode: "free_flow",
         inputType: "text",
@@ -50,7 +53,7 @@ export default function FreeFlowTypeScreen() {
         syncStatus: "local_only",
       });
       allowNextNavigation();
-      router.replace("/(tabs)/journal");
+      await navigateAfterReflectionSave(entry);
     } catch (error: unknown) {
       handleReflectionSaveError(error);
       setSaving(false);

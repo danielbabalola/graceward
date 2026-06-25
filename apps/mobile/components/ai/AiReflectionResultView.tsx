@@ -26,6 +26,12 @@ type AiReflectionResultViewProps = {
   /** The cached AI result row id; saved suggestions are linked to it. */
   aiReflectionResultId: string;
   result: AnalyzeReflectionResponse;
+  /**
+   * Dev preview mode: render exactly as in production but never touch the
+   * database. Save actions just flip the card to "saved" locally so the layout
+   * and wording can be eyeballed without seeding rows. Off in real usage.
+   */
+  preview?: boolean;
 };
 
 type SaveMeta = {
@@ -44,6 +50,35 @@ function toParagraphs(text: string): string[] {
 }
 
 /**
+ * Structures a suggested prayer into readable paragraphs. Honors explicit
+ * blank-line breaks when the model provides them; otherwise it groups sentences
+ * so a single run-on block still reads as a calm, structured prayer instead of a
+ * dense wall of text. Falls back to the whole text when it's short.
+ */
+function toPrayerParagraphs(text: string): string[] {
+  const explicit = toParagraphs(text);
+  if (explicit.length > 1) {
+    return explicit;
+  }
+
+  const single = explicit[0] ?? "";
+  const sentences = (single.match(/[^.!?]+[.!?]*(?:\s+|$)/g) ?? [single])
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+
+  if (sentences.length <= 2) {
+    return single.length > 0 ? [single] : [];
+  }
+
+  const SENTENCES_PER_PARAGRAPH = 2;
+  const paragraphs: string[] = [];
+  for (let i = 0; i < sentences.length; i += SENTENCES_PER_PARAGRAPH) {
+    paragraphs.push(sentences.slice(i, i + SENTENCES_PER_PARAGRAPH).join(" "));
+  }
+  return paragraphs;
+}
+
+/**
  * Renders AI suggestions for review. Nothing here is auto-saved — each card has
  * an explicit save action that writes a local item linked back to the source
  * reflection, and prevents duplicate saves from the same card.
@@ -52,12 +87,17 @@ export function AiReflectionResultView({
   journalEntryId,
   aiReflectionResultId,
   result,
+  preview = false,
 }: AiReflectionResultViewProps) {
   const [statuses, setStatuses] = useState<Record<string, SaveStatus>>({});
 
   // Restore saved state when reopening: mark any card whose suggestion was
-  // already saved (matched by content fingerprint) as "saved".
+  // already saved (matched by content fingerprint) as "saved". Skipped in
+  // preview mode, which never reads or writes the database.
   useEffect(() => {
+    if (preview) {
+      return;
+    }
     let active = true;
     (async () => {
       try {
@@ -105,7 +145,7 @@ export function AiReflectionResultView({
     return () => {
       active = false;
     };
-  }, [aiReflectionResultId, result]);
+  }, [aiReflectionResultId, result, preview]);
 
   async function runSave(
     key: string,
@@ -113,6 +153,11 @@ export function AiReflectionResultView({
     save: () => Promise<{ id: string }>,
   ) {
     if (statuses[key] === "saving" || statuses[key] === "saved") {
+      return;
+    }
+    // Preview mode: simulate a save without any database write.
+    if (preview) {
+      setStatuses((prev) => ({ ...prev, [key]: "saved" }));
       return;
     }
     setStatuses((prev) => ({ ...prev, [key]: "saving" }));
@@ -160,6 +205,47 @@ export function AiReflectionResultView({
         <View style={styles.safetyCard}>
           <Text style={styles.safetyLabel}>A gentle note</Text>
           <Text style={styles.safetyBody}>{result.safetyNote}</Text>
+        </View>
+      ) : null}
+
+      {result.scripture ? (
+        <View style={styles.scriptureCard}>
+          <Text style={styles.scriptureLabel}>A verse to sit with</Text>
+          <Text style={styles.scriptureText}>{`\u201C${result.scripture.text}\u201D`}</Text>
+          <Text style={styles.scriptureRef}>
+            {result.scripture.reference}
+            {result.scripture.translation
+              ? ` (${result.scripture.translation})`
+              : ""}
+          </Text>
+        </View>
+      ) : null}
+
+      {result.quote ? (
+        <View style={styles.quoteCard}>
+          <Text style={styles.quoteLabel}>A thought to carry</Text>
+          <Text style={styles.quoteText}>{`\u201C${result.quote.text}\u201D`}</Text>
+          <Text style={styles.quoteAttribution}>
+            {result.quote.author}
+            {result.quote.source ? `, ${result.quote.source}` : ""}
+          </Text>
+        </View>
+      ) : null}
+
+      {result.suggestedPrayer ? (
+        <View style={styles.prayerCard}>
+          <Text style={styles.prayerLabel}>A prayer you can pray</Text>
+          {toPrayerParagraphs(result.suggestedPrayer).map((paragraph, index) => (
+            <Text
+              key={`prayer-line-${index}`}
+              style={[
+                styles.prayerText,
+                index > 0 && styles.prayerParagraphSpacing,
+              ]}
+            >
+              {paragraph}
+            </Text>
+          ))}
         </View>
       ) : null}
 
@@ -446,6 +532,80 @@ const styles = StyleSheet.create({
     borderColor: colors.correctionAccent,
     padding: spacing.md,
     gap: spacing.sm,
+  },
+  scriptureCard: {
+    backgroundColor: colors.backgroundCream,
+    borderRadius: radii.lg,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accentGold,
+    padding: spacing.md,
+    gap: spacing.sm,
+    ...shadows.card,
+  },
+  scriptureLabel: {
+    ...typography.caption,
+    color: colors.accentGold,
+    textTransform: "uppercase",
+  },
+  scriptureText: {
+    ...typography.body,
+    color: colors.text,
+    fontStyle: "italic",
+    lineHeight: 24,
+  },
+  scriptureRef: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+    fontWeight: "600",
+  },
+  quoteCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: radii.lg,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.sage,
+    padding: spacing.md,
+    gap: spacing.sm,
+    ...shadows.card,
+  },
+  quoteLabel: {
+    ...typography.caption,
+    color: colors.textSubtle,
+    textTransform: "uppercase",
+  },
+  quoteText: {
+    ...typography.body,
+    color: colors.text,
+    fontStyle: "italic",
+    lineHeight: 24,
+  },
+  quoteAttribution: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+    fontWeight: "600",
+  },
+  prayerCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primaryDeep,
+    padding: spacing.md,
+    gap: spacing.sm,
+    ...shadows.card,
+  },
+  prayerLabel: {
+    ...typography.caption,
+    color: colors.textSubtle,
+    textTransform: "uppercase",
+  },
+  prayerText: {
+    ...typography.body,
+    color: colors.text,
+    lineHeight: 24,
+  },
+  prayerParagraphSpacing: {
+    marginTop: spacing.sm,
   },
   safetyLabel: {
     ...typography.caption,

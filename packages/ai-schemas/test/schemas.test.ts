@@ -5,6 +5,9 @@ import {
   gratitudeSuggestionSchema,
   lessonSuggestionSchema,
   prayerSuggestionSchema,
+  quoteSchema,
+  reflectionModelOutputSchema,
+  scriptureSchema,
   MAX_REFLECTION_CHARS,
 } from "../src/index.js";
 
@@ -122,6 +125,89 @@ describe("analyzeReflectionResponseSchema", () => {
       prayerSuggestions: [{ description: "no title here" }],
     });
     expect(parsed.success).toBe(false);
+  });
+
+  it("accepts an optional suggestedPrayer, scripture, and quote", () => {
+    const parsed = analyzeReflectionResponseSchema.safeParse({
+      ...validResponse,
+      suggestedPrayer: "Father, thank you for being near. Help me trust you. Amen.",
+      scripture: {
+        reference: "Psalm 23:1",
+        text: "The LORD is my shepherd; I shall not want.",
+        translation: "KJV",
+        theme: "Trust",
+      },
+      quote: {
+        text: "Never be afraid to trust an unknown future to a known God.",
+        author: "Corrie ten Boom",
+      },
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("omits suggestedPrayer/scripture/quote when absent", () => {
+    const parsed = analyzeReflectionResponseSchema.safeParse({
+      pastoralReflection: "Just the reflection.",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.suggestedPrayer).toBeUndefined();
+      expect(parsed.data.scripture).toBeUndefined();
+      expect(parsed.data.quote).toBeUndefined();
+    }
+  });
+});
+
+describe("scriptureSchema and quoteSchema", () => {
+  it("requires reference, text, and translation for scripture", () => {
+    expect(
+      scriptureSchema.safeParse({
+        reference: "John 14:27",
+        text: "Peace I leave with you.",
+        translation: "KJV",
+      }).success,
+    ).toBe(true);
+    expect(
+      scriptureSchema.safeParse({ reference: "John 14:27", text: "Peace." })
+        .success,
+    ).toBe(false);
+  });
+
+  it("requires text and author for a quote", () => {
+    expect(
+      quoteSchema.safeParse({
+        text: "What comes into our minds when we think about God is the most important thing about us.",
+        author: "A. W. Tozer",
+        source: "The Knowledge of the Holy",
+      }).success,
+    ).toBe(true);
+    expect(quoteSchema.safeParse({ text: "Orphaned quote" }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("reflectionModelOutputSchema", () => {
+  it("accepts scriptureId/quoteId as string or null and omits resolved objects", () => {
+    const parsed = reflectionModelOutputSchema.safeParse({
+      pastoralReflection: "A reflection.",
+      suggestedPrayer: "Lord, help me. Amen.",
+      scriptureId: "psalm-23-1",
+      quoteId: null,
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.scriptureId).toBe("psalm-23-1");
+      expect(parsed.data.quoteId).toBeNull();
+      expect("scripture" in parsed.data).toBe(false);
+    }
+  });
+
+  it("accepts omitted ids", () => {
+    const parsed = reflectionModelOutputSchema.safeParse({
+      pastoralReflection: "A reflection.",
+    });
+    expect(parsed.success).toBe(true);
   });
 });
 

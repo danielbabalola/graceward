@@ -186,6 +186,12 @@ export function contentFlaggedError(): AiError {
  * output-side moderation pass. */
 export function analysisOutputText(result: AnalyzeReflectionResponse): string {
   const parts: string[] = [result.pastoralReflection];
+  // The suggested prayer is model-authored, so it goes through output
+  // moderation. Scripture/quote come from the curated, pre-vetted packs (not
+  // model-authored), so they are trusted and intentionally not re-moderated.
+  if (result.suggestedPrayer) {
+    parts.push(result.suggestedPrayer);
+  }
   for (const p of result.prayerSuggestions) {
     parts.push(p.title, p.description);
   }

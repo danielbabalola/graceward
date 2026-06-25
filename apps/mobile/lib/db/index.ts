@@ -122,6 +122,8 @@ export {
   hasAcknowledgedAiTextPolishConsent,
   acknowledgeAiTextPolishConsent,
   resetAiTextPolishConsent,
+  isAutoAiReflectionEnabled,
+  setAutoAiReflectionEnabled,
   getOrCreateAiInstallId,
 } from "./preferences";
 export {

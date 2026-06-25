@@ -93,8 +93,27 @@ Example schema:
 The current reflection contract returns `pastoralReflection`, plus
 `prayerSuggestions`, `gratitudeSuggestions`, `faithfulnessMomentSuggestions`,
 `lessonSuggestions`, and `instructionSuggestions` (each with optional unified
-`tags`), `gentleFollowUpQuestions`, and an optional `safetyNote`. Output is
-validated with Zod and list sizes are clamped server-side.
+`tags`), `gentleFollowUpQuestions`, and an optional `safetyNote`. It also
+returns three optional display-only sections: `suggestedPrayer` (a single short
+prayer in the user's own voice, shaped by the Lord's Prayer pattern and
+mode-aware), `scripture` (a fitting passage), and `quote` (a fitting Christian
+quote/thought). Output is validated with Zod and list sizes are clamped
+server-side.
+
+### Scripture & quote grounding ("RAG-lite")
+
+The model never authors verse or quote text — that is the classic LLM failure
+mode (misquoting Scripture, misattributing quotes). Instead, the server injects
+mode-scoped candidates from two curated, pre-vetted packs
+(`apps/api/src/ai/scripture-pack.ts`, `quote-pack.ts`) into the prompt, and the
+model only returns the best-fitting `scriptureId`/`quoteId` (or `null`). The
+server resolves those ids back to the canonical entry, so wording and
+attribution are always accurate; an unknown or null id simply omits the section.
+This is a deliberate stand-in for a real retrieval system later. Verse text is
+KJV (public domain); every seeded verse/quote was verified against an
+authoritative source. The model output is validated against
+`reflectionModelOutputSchema` (which carries the ids) before resolution to the
+public `analyzeReflectionResponseSchema`.
 
 ## Tags (themes)
 
@@ -115,8 +134,8 @@ Every AI output should store:
 - model_name
 - created_at
 
-Reflection analysis is at `reflection-v3` and voice-entry structuring at
-`structure-entry-v3`; bump these whenever the system prompt materially changes.
+Reflection analysis is at `reflection-v6` and voice-entry structuring at
+`structure-entry-v4`; bump these whenever the system prompt materially changes.
 
 ## Theological Guardrails
 
