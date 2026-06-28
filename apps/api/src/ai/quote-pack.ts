@@ -108,6 +108,56 @@ export const QUOTE_PACK: readonly QuoteEntry[] = [
     source: "Wishful Thinking",
     themes: ["Calling", "Work", "Guidance"],
   },
+  {
+    id: "ten-boom-worry",
+    text: "Worry does not empty tomorrow of its sorrow, it empties today of its strength.",
+    author: "Corrie ten Boom",
+    source: "Clippings from My Notebook",
+    themes: ["Trust", "Peace", "Patience"],
+  },
+  {
+    id: "lewis-aim-at-heaven",
+    text: "Aim at Heaven and you will get earth 'thrown in': aim at earth and you will get neither.",
+    author: "C. S. Lewis",
+    source: "Mere Christianity",
+    themes: ["Hope", "Faith", "Calling"],
+  },
+  {
+    id: "lewis-courage",
+    text: "Courage is not simply one of the virtues, but the form of every virtue at the testing point, which means, at the point of highest reality.",
+    author: "C. S. Lewis",
+    source: "The Screwtape Letters",
+    themes: ["Faith", "Patience", "Hope"],
+  },
+  {
+    id: "packer-he-knows-me",
+    text: "What matters supremely, therefore, is not, in the last analysis, the fact that I know God, but the larger fact which underlies it—the fact that he knows me.",
+    author: "J. I. Packer",
+    source: "Knowing God",
+    themes: ["Faith", "Trust", "Hope"],
+  },
+  {
+    id: "chambers-original",
+    text: "Never make a principle out of your experience; let God be as original with other people as He is with you.",
+    author: "Oswald Chambers",
+    source: "My Utmost for His Highest",
+    themes: ["Friendship", "Patience", "Wisdom"],
+  },
+  {
+    id: "bonhoeffer-community",
+    text: "He who loves his dream of a community more than the Christian community itself becomes a destroyer of the latter.",
+    author: "Dietrich Bonhoeffer",
+    source: "Life Together",
+    themes: ["Friendship", "Family"],
+  },
+  {
+    id: "carmichael-acceptance",
+    text: "In acceptance lieth peace.",
+    author: "Amy Carmichael",
+    source: "Mountain Breezes",
+    themes: ["Peace", "Trust", "Rest"],
+    modes: ["lament", "regular", "free_flow"],
+  },
 ];
 
 const QUOTE_BY_ID: ReadonlyMap<string, QuoteEntry> = new Map(

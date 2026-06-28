@@ -16,6 +16,13 @@ type SegmentedControlProps<T extends string> = {
    * are several (or long) labels that would otherwise be cramped.
    */
   scrollable?: boolean;
+  /**
+   * When true, segments wrap onto multiple rows (roughly three per row) so all
+   * options stay visible at once instead of scrolling horizontally. Takes
+   * precedence over `scrollable`. Use for a handful of labels that should all be
+   * on screen.
+   */
+  wrap?: boolean;
 };
 
 export function SegmentedControl<T extends string>({
@@ -23,7 +30,14 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   scrollable = false,
+  wrap = false,
 }: SegmentedControlProps<T>) {
+  const segmentSizing = wrap
+    ? styles.segmentWrap
+    : scrollable
+      ? styles.segmentAuto
+      : styles.segmentFlex;
+
   const segments = options.map((option) => {
     const selected = option.value === value;
     return (
@@ -32,11 +46,7 @@ export function SegmentedControl<T extends string>({
         onPress={() => onChange(option.value)}
         accessibilityRole="button"
         accessibilityState={{ selected }}
-        style={[
-          styles.segment,
-          scrollable ? styles.segmentAuto : styles.segmentFlex,
-          selected && styles.segmentSelected,
-        ]}
+        style={[styles.segment, segmentSizing, selected && styles.segmentSelected]}
       >
         <Text
           numberOfLines={1}
@@ -47,6 +57,10 @@ export function SegmentedControl<T extends string>({
       </Pressable>
     );
   });
+
+  if (wrap) {
+    return <View style={[styles.track, styles.trackWrap]}>{segments}</View>;
+  }
 
   if (scrollable) {
     return (
@@ -71,6 +85,9 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
     gap: spacing.xs,
   },
+  trackWrap: {
+    flexWrap: "wrap",
+  },
   segment: {
     minHeight: touchTarget,
     borderRadius: radii.sm,
@@ -82,6 +99,11 @@ const styles = StyleSheet.create({
   },
   segmentAuto: {
     paddingHorizontal: spacing.md,
+  },
+  segmentWrap: {
+    flexBasis: "30%",
+    flexGrow: 1,
+    paddingHorizontal: spacing.sm,
   },
   segmentSelected: {
     backgroundColor: colors.cardBackground,

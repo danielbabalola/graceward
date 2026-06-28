@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Button } from "@/components/ui/Button";
+import { FloatingActionButton } from "@/components/ui/FloatingActionButton";
 import { Screen } from "@/components/ui/Screen";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { GratitudeList } from "@/components/gratitude/GratitudeList";
@@ -48,6 +49,44 @@ function promptAddRevelation() {
   ]);
 }
 
+/**
+ * The floating "+" action for the current segment: each kind of thing to
+ * remember has its own create destination (revelations first ask which kind).
+ */
+function addActionForSegment(tab: RememberSegment): {
+  label: string;
+  onPress: () => void;
+} {
+  switch (tab) {
+    case "gratitudes":
+      return {
+        label: "Add gratitude",
+        onPress: () => router.push("/gratitude/new"),
+      };
+    case "faithfulness":
+      return {
+        label: "Add testimony",
+        onPress: () => router.push("/win/new"),
+      };
+    case "lessons":
+      return {
+        label: "Save a lesson",
+        onPress: () => router.push("/lesson/new"),
+      };
+    case "revelations":
+      return { label: "Add revelation", onPress: promptAddRevelation };
+    case "instructions":
+      return {
+        label: "Add instruction",
+        onPress: () =>
+          router.push({
+            pathname: "/revelation/new",
+            params: { kind: "instruction" },
+          }),
+      };
+  }
+}
+
 export default function RememberScreen() {
   const params = useLocalSearchParams<{ segment?: string }>();
   const [tab, setTab] = useState<RememberSegment>(DEFAULT_REMEMBER_SEGMENT);
@@ -71,65 +110,25 @@ export default function RememberScreen() {
     }, []),
   );
 
+  const addAction = addActionForSegment(tab);
+
   return (
     <Screen
       title="Remember"
       subtitle="Notice mercy, remember God's faithfulness, and hold what you're learning — one day at a time."
+      floatingAction={
+        <FloatingActionButton
+          accessibilityLabel={addAction.label}
+          onPress={addAction.onPress}
+        />
+      }
     >
-      {tab === "gratitudes" ? (
-        <View style={styles.addButton}>
-          <Button
-            label="Add gratitude"
-            onPress={() => router.push("/gratitude/new")}
-          />
-        </View>
-      ) : null}
-      {tab === "faithfulness" ? (
-        <View style={styles.addButton}>
-          <Button
-            label="Add testimony"
-            onPress={() => router.push("/win/new")}
-          />
-        </View>
-      ) : null}
-      {tab === "lessons" ? (
-        <View style={styles.addButton}>
-          <Button label="Save a lesson" onPress={() => router.push("/lesson/new")} />
-        </View>
-      ) : null}
-      {tab === "revelations" ? (
-        <View style={styles.addButton}>
-          <Button label="Add revelation" onPress={promptAddRevelation} />
-        </View>
-      ) : null}
-      {tab === "instructions" ? (
-        <View style={styles.addButton}>
-          <Button
-            label="Add instruction"
-            onPress={() =>
-              router.push({
-                pathname: "/revelation/new",
-                params: { kind: "instruction" },
-              })
-            }
-          />
-        </View>
-      ) : null}
-
       <View style={styles.switcher}>
         <SegmentedControl
           options={tabOptions}
           value={tab}
           onChange={setTab}
-          scrollable
-        />
-      </View>
-
-      <View style={styles.browseTags}>
-        <Button
-          label="Browse tags"
-          variant="secondary"
-          onPress={() => router.push("/tags")}
+          wrap
         />
       </View>
 
@@ -138,18 +137,23 @@ export default function RememberScreen() {
       {tab === "lessons" ? <LessonsList /> : null}
       {tab === "revelations" ? <RevelationsList /> : null}
       {tab === "instructions" ? <InstructionsList /> : null}
+
+      <View style={styles.browseTags}>
+        <Button
+          label="Browse tags"
+          variant="secondary"
+          onPress={() => router.push("/tags")}
+        />
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  addButton: {
-    marginBottom: spacing.lg,
-  },
   switcher: {
     marginBottom: spacing.md,
   },
   browseTags: {
-    marginBottom: spacing.lg,
+    marginTop: spacing.lg,
   },
 });

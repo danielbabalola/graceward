@@ -1,5 +1,10 @@
 import * as Crypto from "expo-crypto";
 import type { CreateWinInput, UpdateWinInput, Win } from "@graceward/shared";
+import {
+  type EntrySearch,
+  likeContainsParam,
+  normalizeSearch,
+} from "@/lib/entry-filter";
 import { getDatabase } from "./client";
 import { listTagsForEntry, setEntryTags } from "./tags";
 
@@ -82,12 +87,27 @@ export async function createWin(input: CreateWinInput): Promise<Win> {
   return win;
 }
 
-export async function listWins(): Promise<Win[]> {
+/**
+ * Lists faithfulness moments newest-first, optionally narrowed by a content
+ * search. Date filtering is applied in memory by the caller so it can use each
+ * moment's effective day (the user-set "occurred" day when present).
+ */
+export async function listWins(filter: EntrySearch = {}): Promise<Win[]> {
   const db = await getDatabase();
+  const conditions = ["deleted_at IS NULL"];
+  const params: string[] = [];
+
+  const search = normalizeSearch(filter.search);
+  if (search) {
+    conditions.push("content LIKE ? ESCAPE '\\'");
+    params.push(likeContainsParam(search));
+  }
+
   const rows = await db.getAllAsync<WinRow>(
     `SELECT * FROM wins
-      WHERE deleted_at IS NULL
+      WHERE ${conditions.join(" AND ")}
       ORDER BY created_at DESC`,
+    params,
   );
   return rows.map(mapRow);
 }

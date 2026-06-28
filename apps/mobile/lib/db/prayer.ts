@@ -5,6 +5,11 @@ import type {
   PrayerRequestStatus,
   UpdatePrayerRequestInput,
 } from "@graceward/shared";
+import {
+  type EntrySearch,
+  likeContainsParam,
+  normalizeSearch,
+} from "@/lib/entry-filter";
 import { getDatabase } from "./client";
 import { toLocalDateString } from "./helpers";
 import { listTagsForEntry, setEntryTags } from "./tags";
@@ -101,15 +106,33 @@ export async function listPrayerRequests(): Promise<PrayerRequest[]> {
   return rows.map(mapRow);
 }
 
+/**
+ * Lists prayer requests of a status newest-first, optionally narrowed by a
+ * search across title and description. Date filtering is applied in memory by
+ * the caller.
+ */
 export async function listPrayerRequestsByStatus(
   status: PrayerRequestStatus,
+  filter: EntrySearch = {},
 ): Promise<PrayerRequest[]> {
   const db = await getDatabase();
+  const conditions = ["status = ?", "deleted_at IS NULL"];
+  const params: string[] = [status];
+
+  const search = normalizeSearch(filter.search);
+  if (search) {
+    conditions.push(
+      "(title LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')",
+    );
+    const param = likeContainsParam(search);
+    params.push(param, param);
+  }
+
   const rows = await db.getAllAsync<PrayerRequestRow>(
     `SELECT * FROM prayer_requests
-      WHERE status = ? AND deleted_at IS NULL
+      WHERE ${conditions.join(" AND ")}
       ORDER BY created_at DESC`,
-    [status],
+    params,
   );
   return rows.map(mapRow);
 }

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import type { PrayerRequestStatus } from "@graceward/shared";
-import { Button } from "@/components/ui/Button";
+import { FloatingActionButton } from "@/components/ui/FloatingActionButton";
 import { Screen } from "@/components/ui/Screen";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { PrayerList } from "@/components/prayer/PrayerList";
@@ -21,14 +21,13 @@ export default function PrayerScreen() {
     <Screen
       title="Prayer"
       subtitle="Bring what matters before God — and remember when He answers."
-    >
-      <View style={styles.addButton}>
-        <Button
-          label="Add prayer request"
+      floatingAction={
+        <FloatingActionButton
+          accessibilityLabel="Add prayer request"
           onPress={() => router.push("/prayer/new")}
         />
-      </View>
-
+      }
+    >
       <View style={styles.switcher}>
         <SegmentedControl
           options={statusOptions}
@@ -43,9 +42,6 @@ export default function PrayerScreen() {
 }
 
 const styles = StyleSheet.create({
-  addButton: {
-    marginBottom: spacing.lg,
-  },
   switcher: {
     marginBottom: spacing.lg,
   },

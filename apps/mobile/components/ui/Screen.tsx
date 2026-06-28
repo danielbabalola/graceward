@@ -14,13 +14,29 @@ type ScreenProps = {
   subtitle?: string;
   children: ReactNode;
   contentStyle?: ViewStyle;
+  /**
+   * Optional element pinned above the scrolling content at the bottom-right
+   * (e.g. a FloatingActionButton). It stays in place while the list scrolls, so
+   * a primary action remains reachable without crowding the top of the screen.
+   */
+  floatingAction?: ReactNode;
 };
 
-export function Screen({ title, subtitle, children, contentStyle }: ScreenProps) {
+export function Screen({
+  title,
+  subtitle,
+  children,
+  contentStyle,
+  floatingAction,
+}: ScreenProps) {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <ScrollView
-        contentContainerStyle={[styles.content, contentStyle]}
+        contentContainerStyle={[
+          styles.content,
+          floatingAction ? styles.contentWithFab : null,
+          contentStyle,
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -32,6 +48,11 @@ export function Screen({ title, subtitle, children, contentStyle }: ScreenProps)
         </View>
         {children}
       </ScrollView>
+      {floatingAction ? (
+        <View style={styles.floatingAction} pointerEvents="box-none">
+          {floatingAction}
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -44,6 +65,15 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxl,
+  },
+  // Extra bottom room so the floating action never covers the last list item.
+  contentWithFab: {
+    paddingBottom: spacing.xxl + 72,
+  },
+  floatingAction: {
+    position: "absolute",
+    right: spacing.lg,
+    bottom: spacing.lg,
   },
   header: {
     paddingTop: spacing.md,

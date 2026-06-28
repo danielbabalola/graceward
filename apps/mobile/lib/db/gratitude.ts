@@ -4,6 +4,11 @@ import type {
   Gratitude,
   UpdateGratitudeInput,
 } from "@graceward/shared";
+import {
+  type EntrySearch,
+  likeContainsParam,
+  normalizeSearch,
+} from "@/lib/entry-filter";
 import { getDatabase } from "./client";
 import { listTagsForEntry, setEntryTags } from "./tags";
 
@@ -82,12 +87,29 @@ export async function createGratitude(
   return gratitude;
 }
 
-export async function listGratitudes(): Promise<Gratitude[]> {
+/**
+ * Lists gratitudes newest-first, optionally narrowed by a content search. Date
+ * filtering is applied in memory by the caller (gratitude has no "occurred"
+ * day, so its effective date is `created_at`).
+ */
+export async function listGratitudes(
+  filter: EntrySearch = {},
+): Promise<Gratitude[]> {
   const db = await getDatabase();
+  const conditions = ["deleted_at IS NULL"];
+  const params: string[] = [];
+
+  const search = normalizeSearch(filter.search);
+  if (search) {
+    conditions.push("content LIKE ? ESCAPE '\\'");
+    params.push(likeContainsParam(search));
+  }
+
   const rows = await db.getAllAsync<GratitudeRow>(
     `SELECT * FROM gratitudes
-      WHERE deleted_at IS NULL
+      WHERE ${conditions.join(" AND ")}
       ORDER BY created_at DESC`,
+    params,
   );
   return rows.map(mapRow);
 }

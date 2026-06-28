@@ -5,6 +5,11 @@ import type {
   LessonStatus,
   UpdateLessonInput,
 } from "@graceward/shared";
+import {
+  type EntrySearch,
+  likeContainsParam,
+  normalizeSearch,
+} from "@/lib/entry-filter";
 import { getDatabase } from "./client";
 import { listTagsForEntry, setEntryTags } from "./tags";
 
@@ -88,13 +93,37 @@ export async function createLesson(input: CreateLessonInput): Promise<Lesson> {
   return lesson;
 }
 
+/**
+ * Builds the shared WHERE conditions (and bound params) for a lesson list:
+ * always excludes soft-deleted rows, and optionally applies a title/content
+ * search. Date filtering is applied in memory by the caller.
+ */
+function buildLessonFilter(filter: EntrySearch): {
+  conditions: string[];
+  params: string[];
+} {
+  const conditions = ["deleted_at IS NULL"];
+  const params: string[] = [];
+
+  const search = normalizeSearch(filter.search);
+  if (search) {
+    conditions.push("(title LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\')");
+    const param = likeContainsParam(search);
+    params.push(param, param);
+  }
+
+  return { conditions, params };
+}
+
 /** All non-deleted lessons, newest first. Used for export and broad reads. */
-export async function listLessons(): Promise<Lesson[]> {
+export async function listLessons(filter: EntrySearch = {}): Promise<Lesson[]> {
   const db = await getDatabase();
+  const { conditions, params } = buildLessonFilter(filter);
   const rows = await db.getAllAsync<LessonRow>(
     `SELECT * FROM lessons
-      WHERE deleted_at IS NULL
+      WHERE ${conditions.join(" AND ")}
       ORDER BY created_at DESC`,
+    params,
   );
   return rows.map(mapRow);
 }
@@ -113,13 +142,15 @@ export async function listRecentLessons(limit = 10): Promise<Lesson[]> {
 
 export async function listLessonsByStatus(
   status: LessonStatus,
+  filter: EntrySearch = {},
 ): Promise<Lesson[]> {
   const db = await getDatabase();
+  const { conditions, params } = buildLessonFilter(filter);
   const rows = await db.getAllAsync<LessonRow>(
     `SELECT * FROM lessons
-      WHERE status = ? AND deleted_at IS NULL
+      WHERE status = ? AND ${conditions.join(" AND ")}
       ORDER BY created_at DESC`,
-    [status],
+    [status, ...params],
   );
   return rows.map(mapRow);
 }

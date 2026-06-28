@@ -6,6 +6,11 @@ import type {
   RevelationStatus,
   UpdateRevelationInput,
 } from "@graceward/shared";
+import {
+  type EntrySearch,
+  likeContainsParam,
+  normalizeSearch,
+} from "@/lib/entry-filter";
 import { getDatabase } from "./client";
 import { toLocalDateString } from "./helpers";
 import { listTagsForEntry, setEntryTags } from "./tags";
@@ -104,13 +109,39 @@ export async function createRevelation(
   return revelation;
 }
 
+/**
+ * Builds the shared search conditions (title/content LIKE) for a revelation
+ * list. Date filtering is applied in memory by the caller so it can use each
+ * revelation's effective day (the user-set "occurred" day when present).
+ */
+function buildRevelationSearch(filter: EntrySearch): {
+  conditions: string[];
+  params: string[];
+} {
+  const conditions = ["deleted_at IS NULL"];
+  const params: string[] = [];
+
+  const search = normalizeSearch(filter.search);
+  if (search) {
+    conditions.push("(title LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\')");
+    const param = likeContainsParam(search);
+    params.push(param, param);
+  }
+
+  return { conditions, params };
+}
+
 /** All non-deleted revelations, newest first. Used for export and broad reads. */
-export async function listRevelations(): Promise<Revelation[]> {
+export async function listRevelations(
+  filter: EntrySearch = {},
+): Promise<Revelation[]> {
   const db = await getDatabase();
+  const { conditions, params } = buildRevelationSearch(filter);
   const rows = await db.getAllAsync<RevelationRow>(
     `SELECT * FROM instructions
-      WHERE deleted_at IS NULL
+      WHERE ${conditions.join(" AND ")}
       ORDER BY created_at DESC`,
+    params,
   );
   return rows.map(mapRow);
 }
@@ -118,13 +149,15 @@ export async function listRevelations(): Promise<Revelation[]> {
 /** All non-deleted revelations of a single kind, newest first. */
 export async function listRevelationsByKind(
   kind: RevelationKind,
+  filter: EntrySearch = {},
 ): Promise<Revelation[]> {
   const db = await getDatabase();
+  const { conditions, params } = buildRevelationSearch(filter);
   const rows = await db.getAllAsync<RevelationRow>(
     `SELECT * FROM instructions
-      WHERE kind = ? AND deleted_at IS NULL
+      WHERE kind = ? AND ${conditions.join(" AND ")}
       ORDER BY created_at DESC`,
-    [kind],
+    [kind, ...params],
   );
   return rows.map(mapRow);
 }
