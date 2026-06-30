@@ -78,6 +78,26 @@ describe("buildStructureSystemPrompt", () => {
     expect(lesson.toLowerCase()).toContain("humble");
   });
 
+  it("preserves the full substance for every entry type (no shortening)", () => {
+    for (const type of [
+      "prayer",
+      "gratitude",
+      "faithfulness",
+      "lesson",
+      "instruction",
+      "dream",
+      "prophecy",
+    ] as const) {
+      const prompt = buildStructureSystemPrompt(type);
+      // Shared completeness guardrail must be present.
+      expect(prompt).toContain("FULL substance");
+      expect(prompt).toContain("do NOT summarize");
+      // The old length caps that produced shortened entries are gone.
+      expect(prompt).not.toContain("one or two sentences");
+      expect(prompt).not.toContain("one or two gentle sentences");
+    }
+  });
+
   it("treats an instruction as the user's own words, never God speaking", () => {
     const instruction = buildStructureSystemPrompt("instruction");
     expect(instruction).toContain("INSTRUCTION");

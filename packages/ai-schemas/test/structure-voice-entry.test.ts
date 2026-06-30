@@ -223,7 +223,7 @@ describe("structureVoiceEntryResponseSchema", () => {
 
 describe("voice entry constants", () => {
   it("exposes a stable prompt version and transcript bound", () => {
-    expect(STRUCTURE_ENTRY_PROMPT_VERSION).toBe("structure-entry-v4");
+    expect(STRUCTURE_ENTRY_PROMPT_VERSION).toBe("structure-entry-v5");
     expect(MAX_VOICE_ENTRY_TRANSCRIPT_CHARS).toBe(8000);
   });
 });

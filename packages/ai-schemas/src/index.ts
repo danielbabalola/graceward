@@ -376,7 +376,7 @@ export type TranscribeReflectionResponse = z.infer<
 /* -------------------------------------------------------------------------- */
 
 /** Prompt identifier persisted/sent for future versioning of structuring. */
-export const STRUCTURE_ENTRY_PROMPT_VERSION = "structure-entry-v4";
+export const STRUCTURE_ENTRY_PROMPT_VERSION = "structure-entry-v5";
 
 /**
  * Defensive upper bound on the transcript length the server will structure.
