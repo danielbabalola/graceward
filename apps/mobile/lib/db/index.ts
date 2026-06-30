@@ -21,8 +21,16 @@ export {
   updateAudioTranscriptionStatus,
   softDeleteAudioAssetsForEntry,
 } from "./audio";
-export { listAllForExport, deleteAllLocalData } from "./data-management";
-export type { LocalDataExport } from "./data-management";
+export {
+  listAllForExport,
+  importLocalData,
+  deleteAllLocalData,
+} from "./data-management";
+export type {
+  LocalDataExport,
+  ImportSummary,
+  ImportByType,
+} from "./data-management";
 export {
   createAiReflectionResult,
   getLatestAiReflectionResult,

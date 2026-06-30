@@ -30,15 +30,19 @@ import {
   formatDiagnostics,
 } from "@/lib/diagnostics";
 import { exportLocalData } from "@/lib/local-data-export";
+import { importLocalDataFromFile } from "@/lib/local-data-import";
 import { colors, spacing, typography } from "@/theme/tokens";
 
 type ExportState = "idle" | "exporting" | "done" | "error";
+type ImportState = "idle" | "importing" | "done" | "error";
 type DeleteState = "idle" | "deleting" | "done" | "error";
 type ConsentState = "loading" | "acknowledged" | "not-acknowledged";
 type HelpMessage = { kind: "success" | "info" | "error"; text: string } | null;
 
 export default function SettingsScreen() {
   const [exportState, setExportState] = useState<ExportState>("idle");
+  const [importState, setImportState] = useState<ImportState>("idle");
+  const [importMessage, setImportMessage] = useState<string | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [consentState, setConsentState] = useState<ConsentState>("loading");
   const [transcriptionConsentState, setTranscriptionConsentState] =
@@ -246,6 +250,46 @@ export default function SettingsScreen() {
     }
   }
 
+  async function handleImport() {
+    if (importState === "importing") {
+      return;
+    }
+    setImportState("importing");
+    setImportMessage(null);
+    try {
+      const result = await importLocalDataFromFile();
+      if (result.status === "cancelled") {
+        setImportState("idle");
+        return;
+      }
+      if (result.status === "invalid") {
+        setImportState("error");
+        setImportMessage(result.message);
+        return;
+      }
+      const { imported, skipped } = result.summary;
+      setImportState("done");
+      setImportMessage(
+        imported === 0
+          ? "Everything in that file was already on this device."
+          : `Imported ${imported} item${imported === 1 ? "" : "s"}.` +
+              (skipped > 0
+                ? ` ${skipped} ${skipped === 1 ? "was" : "were"} already here.`
+                : ""),
+      );
+    } catch (error: unknown) {
+      // Never log imported content — only an error category.
+      console.warn(
+        "Failed to import local data:",
+        error instanceof Error ? error.message : "unknown error",
+      );
+      setImportState("error");
+      setImportMessage(
+        "Could not import that file just now. Please try again.",
+      );
+    }
+  }
+
   function confirmDelete() {
     if (deleteState === "deleting") {
       return;
@@ -434,6 +478,28 @@ export default function SettingsScreen() {
           <Text style={styles.errorText}>
             Could not prepare the export just now. Please try again.
           </Text>
+        ) : null}
+      </Section>
+
+      <Section title="Import Data">
+        <Text style={styles.paragraph}>
+          Restore from a Graceward JSON export — for example, data you exported
+          from a previous install (such as Expo Go) or another device. Your
+          existing entries are kept; only items not already on this device are
+          added, so it&apos;s safe to import more than once. Voice recordings
+          aren&apos;t included in exports and can&apos;t be restored.
+        </Text>
+        <Button
+          label="Import from a file"
+          variant="secondary"
+          onPress={handleImport}
+          loading={importState === "importing"}
+        />
+        {importState === "done" ? (
+          <Text style={styles.successText}>{importMessage}</Text>
+        ) : null}
+        {importState === "error" ? (
+          <Text style={styles.errorText}>{importMessage}</Text>
         ) : null}
       </Section>
 
